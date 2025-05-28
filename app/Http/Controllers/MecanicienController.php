@@ -16,7 +16,6 @@ class MecanicienController extends Controller
     {
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
-            'garage_id' => 'nullable|exists:garages,id',
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
             'type' => 'required|string',
@@ -30,10 +29,9 @@ class MecanicienController extends Controller
 
         $existingMecanicien = Mecanicien::where('nom', $validated['nom'])
             ->where('prenom', $validated['prenom'])
-            ->where('garage_id', $validated['garage_id'])
             ->first();
         if ($existingMecanicien) {
-            return response()->json(['error' => 'Ce mécanicien existe déjà dans ce garage.'], 400);
+            return response()->json(['error' => 'Ce mécanicien existe déjà.'], 400);
         }
 
         $mecanicien = Mecanicien::create(array_merge($validated));
@@ -84,7 +82,7 @@ class MecanicienController extends Controller
     // Lister tous les mécaniciens
     public function index()
     {
-        $mecaniciens = Mecanicien::with(relations: 'garage')->get();
+        $mecaniciens = Mecanicien::all();
         return response()->json([
             'status' => 'success',
             'mecaniciens' => $mecaniciens
@@ -108,7 +106,6 @@ class MecanicienController extends Controller
             'experience' => 'nullable|numeric',
             'contact' => 'nullable|string',
             'contact_urgence' => 'nullable|string',
-            'garage_id' => 'sometimes|exists:garages,id',
         ]);
 
         $mecanicien->update($validated);

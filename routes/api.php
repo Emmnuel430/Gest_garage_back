@@ -66,30 +66,6 @@ Route::get('user/{id}', [UserController::class, 'getUser']);
 Route::post('update_user/{id}', [UserController::class, 'updateUser']);
 
 
-
-// -----------------------------------------------
-// -------------   Garages   ---------------------
-// -----------------------------------------------
-// Définit une route POST pour l'endpoint '/add_garage'.
-// Lorsque cette route est appelée, elle exécute la fonction 'addGarage' du GarageController.
-Route::post('add_garage', [GarageController::class, 'addGarage']);
-
-// Définit une route GET pour l'endpoint '/liste_garage'.
-// Lorsque cette route est appelée, elle exécute la fonction 'listeGarage' du GarageController.
-Route::get('liste_garage', [GarageController::class, 'listeGarage']);
-
-// Définit une route GET pour l'endpoint '/garage/{id}'.
-// Lorsque cette route est appelée, elle exécute la fonction 'getGarage' du GarageController.
-Route::get('garage/{id}', [GarageController::class, 'getGarage']);
-
-// Définit une route DELETE pour l'endpoint '/delete_garage/{id}'.
-// Lorsque cette route est appelée, elle exécute la fonction 'deleteGarage' du GarageController.
-Route::delete('delete_garage/{id}', [GarageController::class, 'deleteGarage']);
-
-// Définit une route POST pour l'endpoint '/update_garage/{id}'.
-// Lorsque cette route est appelée, elle exécute la fonction 'updateGarage' du GarageController.
-Route::post('update_garage/{id}', [GarageController::class, 'updateGarage']);
-
 // ------------------------------------------------
 // -------------   Mécaniciens   ------------------
 // ------------------------------------------------

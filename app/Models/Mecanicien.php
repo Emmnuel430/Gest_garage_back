@@ -11,7 +11,6 @@ class Mecanicien extends Model
 
     protected $fillable = [
         'user_id',
-        'garage_id',
         'nom',
         'prenom',
         'type',
@@ -27,10 +26,6 @@ class Mecanicien extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function garage()
-    {
-        return $this->belongsTo(Garage::class);
-    }
 
     public function vehicules()
     {

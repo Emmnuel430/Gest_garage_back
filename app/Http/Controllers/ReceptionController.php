@@ -25,7 +25,7 @@ class ReceptionController extends Controller
         $validatedVehicule = $request->validate([
             'immatriculation' => 'required|string|max:255',
             'marque' => 'required|string|max:255',
-            'modele' => 'nullable|string|max:255',
+            'modele' => 'required|string|max:255',
             'client_nom' => 'nullable|string|max:255',
             'client_tel' => 'nullable|string|max:50',
             'mecanicien_id' => 'required|exists:mecaniciens,id',

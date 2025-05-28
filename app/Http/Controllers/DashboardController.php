@@ -80,8 +80,6 @@ class DashboardController extends Controller
                 ->take(5)
                 ->get(),
 
-            /* 'factures_total' => Facture::count(),
-            'garages_total' => Garage::count(), */
 
         ]);
     }

@@ -117,9 +117,6 @@
             <td><strong>Contact :</strong> {{ $mecanicien->contact ?? '...' }}</td>
         </tr>
         <tr>
-            <td><strong>Nom de Garage :</strong> {{ $mecanicien->garage->nom ?? '...' }}</td>
-        </tr>
-        <tr>
             <td><strong>Expérience professionnelle :</strong> {{ $mecanicien->experience ?? '...' }} ans</td>
         </tr>
         <tr>
