@@ -71,10 +71,6 @@ class UserController extends Controller
     {
         // Retourne tous les produits sous forme de collection
         $users = User::all();
-        // Vérifie si la collection est vide
-        if ($users->isEmpty()) {
-            return response()->json(['status' => 'Aucun utilisateur trouvé'], 404);
-        }
         // Retourne la collection d'utilisateurs
         return response()->json([
             'status' => 'success',

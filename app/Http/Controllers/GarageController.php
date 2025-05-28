@@ -65,9 +65,6 @@ class GarageController extends Controller
     public function listeGarage()
     {
         $garages = Garage::all();
-        if ($garages->isEmpty()) {
-            return response()->json(['status' => 'Aucun garage trouvé.'], 404);
-        }
 
         return response()->json([
             'status' => 'success',
