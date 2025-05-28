@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Vehicule;
+use Illuminate\Support\Facades\DB;
 use App\Models\Reception;
 use App\Models\Reparation;
 use App\Models\Facture;
@@ -33,8 +34,10 @@ class DashboardController extends Controller
                 : "✅";
         }
         // --------------
-        $vehicules = Vehicule::selectRaw('DATE(created_at) as date, COUNT(*) as total')
-            ->groupBy('date')
+        $beneficesParJour = Facture::selectRaw('DATE(date_paiement) as date, SUM(montant) as total')
+            ->whereNotNull('date_paiement') // facultatif selon ta logique de paiement
+            // ->where('statut', 'payé') // si tu préfères filtrer par statut
+            ->groupBy(DB::raw('DATE(date_paiement)'))
             ->orderBy('date')
             ->get();
 
@@ -60,7 +63,8 @@ class DashboardController extends Controller
             'receptions_validee' => $receptionsValidee,
             'receptions_terminee' => Reception::where('statut', 'termine')->count(),
             // -------
-            'vehicules_total' => $vehicules,
+            // 'vehicules_total' => $vehicules,
+            'benefices_par_jour' => $beneficesParJour,
             'receptions_total' => $receptions,
             // -------
             'latest_receptions' => $latestReceptions,

@@ -19,7 +19,16 @@ class UserSeeder extends Seeder
     {
         $faker = Faker::create('fr_FR');
 
-        foreach (range(1, 10) as $index) {
+        // Créer un super admin en premier
+        User::create([
+            'first_name' => $faker->firstName(),
+            'last_name' => $faker->lastName(),
+            'pseudo' => $faker->unique()->userName(),
+            'password' => bcrypt('12345'),
+            'role' => 'super_admin',
+        ]);
+
+        foreach (range(1, 9) as $index) {
             User::create([
                 'first_name' => $faker->firstName(),
                 'last_name' => $faker->lastName(),

@@ -15,6 +15,7 @@ class Facture extends Model
         'date_generation',
         'statut',
         'recu',
+        'date_paiement',
         'caissier_id'
     ];
 
