@@ -82,12 +82,14 @@ class MecanicienController extends Controller
     // Lister tous les mécaniciens
     public function index()
     {
-        $mecaniciens = Mecanicien::all();
+        $mecaniciens = Mecanicien::with(['reparations.reception.vehicule'])->get();
+
         return response()->json([
             'status' => 'success',
             'mecaniciens' => $mecaniciens
-        ], 200);
+        ]);
     }
+
 
     // Mettre à jour un mécanicien
     public function update(Request $request, $id)

@@ -343,6 +343,7 @@ class ReceptionController extends Controller
             $reparation = Reparation::where('reception_id', $reception->id)->first();
             if ($reparation) {
                 $reparation->update([
+                    'chef_atelier_id' => $userId,
                     'statut' => 'termine'
                 ]);
             }

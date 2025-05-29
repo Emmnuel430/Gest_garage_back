@@ -31,4 +31,18 @@ class Mecanicien extends Model
     {
         return $this->hasMany(Vehicule::class);
     }
+
+    public function reparations()
+    {
+        return $this->hasManyThrough(
+            Reparation::class,
+            Vehicule::class,
+            'mecanicien_id', // Clé étrangère dans `vehicules`
+            'reception_id',  // Clé étrangère dans `reparations` pointant vers `receptions`
+            'id',            // Clé locale dans `mecaniciens`
+            'id'             // Clé locale dans `vehicules`
+        )->join('receptions', 'receptions.id', '=', 'reparations.reception_id')
+            ->select('reparations.*'); // Optionnel, pour éviter les colonnes doublées
+    }
+
 }
