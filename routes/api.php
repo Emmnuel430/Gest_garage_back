@@ -59,7 +59,7 @@ Route::delete('delete_user/{id}', [UserController::class, 'deleteUser']);
 
 // Définit une route GET pour l'endpoint '/users à qui est passé l'id de l'user '.
 // Lorsque cette route est appelée, elle exécute la fonction 'getuser' du UserController.
-Route::get('user/{id}', [UserController::class, 'getUser']);
+Route::get('users/{id}', [UserController::class, 'getUser']);
 
 // Définit une route POST pour l'endpoint '/update_user à qui est passé l'id de l'user '.
 // Lorsque cette route est appelée, elle exécute la fonction 'updateUser' du UserController.
