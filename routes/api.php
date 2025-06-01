@@ -116,8 +116,8 @@ Route::delete('delete_reception/{id}', [ReceptionController::class, 'deleteRecep
 // Lorsque cette route est appelée, elle exécute la fonction 'validerReception' du ReceptionController.
 Route::post('check/{id}', [ReceptionController::class, 'validerReception']);
 // Définit une route POST pour l'endpoint '/terminer/{id}'.
-// Lorsque cette route est appelée, elle exécute la fonction 'validerSortieVehicule' du ReceptionController.
-Route::post('terminer/{id}', [ReceptionController::class, 'validerSortieVehicule']);
+// Lorsque cette route est appelée, elle exécute la fonction 'terminerReparation' du ReceptionController.
+Route::post('terminer/{id}', [ReceptionController::class, 'terminerReparation']);
 // ---------------------------------------------------------------
 // --------------------   Chronos   --------------------------
 // Définit une route POST pour l'endpoint '/stop_chrono/{id}'.
@@ -134,11 +134,18 @@ Route::get('liste_chronos', [ChronoController::class, 'listeChronos']);
 Route::get('liste_reparations', [ReparationController::class, 'listeReparations']);
 // -------------------------------------------------
 // --------------------   Billet de Sortie   ------------------
+// Définit une route POST pour l'endpoint '/generer_billet/{id}'.
+// Cette route exécute la fonction 'genererBilletSortie' du BilletSortieController.
+Route::post('generer_billet/{id}', [BilletSortieController::class, 'genererBilletSortie']);
 // Définit une route GET pour l'endpoint '/liste_billet_sortie'.
 // Lorsque cette route est appelée, elle exécute la fonction 'listeBilletSortie' du BilletSortieController.
 Route::get('liste_billet_sortie', [BilletSortieController::class, 'listeBilletSortie']);
 // ---------------------------------------------------------------
 // --------------------   Factures   --------------------------
+// Définit une route POST pour l'endpoint '/generer_facture/{id}'.
+// Cette route exécute la fonction 'genererFactureEtArreterChrono' du FactureController.
+Route::post('generer_facture/{id}', [FactureController::class, 'genererFactureEtArreterChrono']);
+
 // Définit une route GET pour l'endpoint '/liste_factures'.
 // Lorsque cette route est appelée, elle exécute la fonction 'listeFacture' du FactureController.
 Route::get('liste_factures', [FactureController::class, 'listeFacture']);

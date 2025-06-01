@@ -19,8 +19,8 @@ return new class extends Migration {
             $table->foreignId('caissier_id')->nullable()->constrained('users')->onDelete('set null');
 
             $table->decimal('montant', 10, 2);
-            $table->dateTime('date_generation');
-            $table->enum('statut', ['en_attente', 'payee'])->default('en_attente');
+            $table->dateTime('date_generation')->nullable();
+            $table->enum('statut', ['en_attente', 'generee', 'payee'])->default('en_attente');
             $table->string('recu')->nullable();
             $table->dateTime('date_paiement')->nullable();
             $table->timestamps();

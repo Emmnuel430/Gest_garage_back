@@ -12,6 +12,7 @@ class Reception extends Model
     protected $fillable = [
         'vehicule_id',
         'gardien_id',
+        'chef_atelier_id',
         'date_arrivee',
         'motif_visite',
         'fiche_reception_vehicule',

@@ -131,8 +131,8 @@
                 </p>
                 <p>
                     <strong>Chef Atelier :</strong> {{
-    $billetSortie->chefAtelier->first_name ?? '...' }} {{
-    $billetSortie->chefAtelier->last_name ?? '' }}
+    $chefAtelier->first_name ?? '...' }} {{
+    $chefAtelier->last_name ?? '' }}
                 </p>
                 <p>
                     <strong>Mécanicien :</strong> {{

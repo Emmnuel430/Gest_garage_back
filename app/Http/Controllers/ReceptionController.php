@@ -271,13 +271,14 @@ class ReceptionController extends Controller
                 'start_time' => now(),
             ]);
 
+            // 4. Démarre la réparation
             Reparation::create([
                 'reception_id' => $reception->id,
                 'description' => $reception->motif_visite,
                 'statut' => 'en_cours',
             ]);
 
-            // 4. Générer le PDF de la fiche de réception
+            // 5. Générer le PDF de la fiche de réception
             // Vérifie si le PDF existe déjà
             // Si oui, supprime-le avant de le régénérer
             if ($reception->fiche_reception_vehicule && Storage::exists('public/' . $reception->fiche_reception_vehicule)) {
@@ -323,103 +324,38 @@ class ReceptionController extends Controller
         }
     }
 
-    public function validerSortieVehicule(Request $request, $id)
+    public function terminerReparation(Request $request, $id)
     {
-
-        $reception = Reception::findOrFail($id);
-
         DB::beginTransaction();
 
         try {
+            $reception = Reception::findOrFail($id);
             $userId = $request->input('user_id');
             $chefAtelier = User::findOrFail($userId);
+            $vehicule = $reception->vehicule;
 
-            // 1. Marquer la réparation comme terminée
             $reception->update([
+                'chef_atelier_id' => $chefAtelier->id,
+            ]);
+            // 1. Terminer la reparation
+            $reparation = Reparation::where('reception_id', $reception->id)->firstOrFail();
+            $reparation->update([
+                'chef_atelier_id' => $userId,
                 'statut' => 'termine'
             ]);
 
-            // Màj le statut de la reparation
-            $reparation = Reparation::where('reception_id', $reception->id)->first();
-            if ($reparation) {
-                $reparation->update([
-                    'chef_atelier_id' => $userId,
-                    'statut' => 'termine'
-                ]);
-            }
 
-            // 2. Arrêter le chrono
-            $chrono = Chrono::where('reception_id', $reception->id)->first();
-
-            if (!$chrono || $chrono->end_time) {
-                return response()->json(['message' => 'Chrono introuvable ou déjà arrêté.'], 404);
-            }
-
-            $chrono->end_time = now();
-            $chrono->save();
-
-            $start = Carbon::parse($chrono->start_time);
-            $end = Carbon::parse($chrono->end_time);
-            $duration = $start->diffInMinutes($end);
-            $chrono->update(['duree_total' => $duration]);
-
-            // 3. Générer le billet de sortie (avec PDF)
-            $billetSortie = BilletSortie::create([
-                'reception_id' => $reception->id,
-                'chef_atelier_id' => $chefAtelier->id,
-                'date_generation' => now(),
-            ]);
-
-            // Génération du PDF fiche_sortie_vehicule
-            $pdf = PDF::loadView('pdf.fiche_sortie_vehicule', [
-                'reception' => $reception,
-                'chef' => $chefAtelier,
-                'billetSortie' => $billetSortie,
-            ]);
-
-            $pdfName = 'fiche_sortie_vehicule_' . $reception->id . '_' . time() . '.pdf';
-            $pdfPath = 'billets_sortie/' . $pdfName;
-            Storage::put('public/' . $pdfPath, $pdf->output());
-
-            // Met à jour le chemin dans le billet de sortie
-            $billetSortie->update([
-                'fiche_sortie_vehicule' => $pdfPath,
-            ]);
-
-            $tarifJournalier = 15000; // Tarif par jour en FCFA
-            $nbJours = ceil($chrono->duree_total / (60 * 24));
-            $montant = $nbJours * $tarifJournalier;
-
+            // 2. Création d'une facture "en attente"
             $facture = Facture::create([
                 'reception_id' => $reception->id,
-                'montant' => $montant,
-                'date_generation' => now(),
+                'montant' => 0,
+                'date_generation' => null,
                 'statut' => 'en_attente',
                 'recu' => null,
                 'caissier_id' => null,
             ]);
 
-            // Générer le PDF du reçu de caisse
-            $pdfRecu = PDF::loadView('pdf.recu_caisse', [
-                'reception' => $reception,
-                'billetSortie' => $billetSortie,
-                'montantJournalier' => $tarifJournalier,
-                'montantTotal' => $montant,
-                'nbJours' => $nbJours,
-            ]);
-
-            $recuName = 'recu_caisse_' . $reception->id . '_' . time() . '.pdf';
-            $recuPath = 'recus/' . $recuName;
-
-            Storage::put('public/' . $recuPath, $pdfRecu->output());
-
-            $facture->update([
-                'recu' => $recuPath,
-            ]);
-
-
-            DB::commit();
-
+            // Log de l'action
             Log::create([
                 'idUser' => $chefAtelier->id,
                 'user_nom' => $chefAtelier->last_name,
@@ -429,21 +365,25 @@ class ReceptionController extends Controller
                 'user_doc' => $chefAtelier->created_at,
                 'action' => 'update',
                 'table_concernee' => 'reparations',
-                'details' => "Réparation terminée pour le véhicule {$reception->vehicule->immatriculation} (Réception ID : {$reception->id})",
+                'details' => "Réparation terminée pour le véhicule {$vehicule->immatriculation} (Réception ID : {$reception->id}).",
             ]);
 
+            DB::commit();
+
             return response()->json([
-                'message' => 'Sortie validée, chrono arrêté, billet et facture générés.',
-                'billet_sortie' => $billetSortie,
-                'facture' => $facture,
+                'message' => "Réparation terminée !",
+                'facture' => $facture
             ]);
+
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Erreur lors de la validation de sortie', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return response()->json([
-                'message' => 'Erreur : ' . $e->getMessage()
-            ], 500);
+            return response()->json(['message' => 'Erreur : ' . $e->getMessage()], 500);
         }
     }
+
+
+
+
+
 
 }

@@ -131,8 +131,8 @@
 
         <p>
             <strong>Chef Atelier :</strong>
-            {{ $billetSortie->chefAtelier->first_name ?? '...' }} {{
-    $billetSortie->chefAtelier->last_name ?? '' }}
+            {{ $chefAtelier->first_name ?? '...' }} {{
+    $chefAtelier->last_name ?? '' }}
         </p>
 
         <p>
@@ -175,9 +175,6 @@
     $reception->vehicule->modele ?? '...' }}<br />
                     Immatriculation : {{ $reception->vehicule->immatriculation ?? '...'
             }}<br />
-                    Date de sortie : {{
-    \Carbon\Carbon::parse($billetSortie->date_generation)->format('d/m/Y
-            à H:i:s') ?? '...' }}
                 </td>
                 <td style="padding: 10px; border: 1px solid #ddd; text-align: right">
                     {{ $nbJours ?? 0 }}

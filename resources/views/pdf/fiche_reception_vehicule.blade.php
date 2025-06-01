@@ -244,7 +244,7 @@
       <tr>
         <td colspan="3" style="height: 80px">
           <strong>Observation :</strong><br />
-          {{ $check->remarques ?? 'Néant' }}
+          {{ $check->remarques ?? ' ' }}
         </td>
       </tr>
     </tbody>

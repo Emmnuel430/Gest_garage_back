@@ -16,7 +16,7 @@ return new class extends Migration {
         Schema::create('reparations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('reception_id')->constrained('receptions')->onDelete('cascade');
-            $table->foreignId('chef_atelier_id')->nullable()->constrained('users')->onDelete('cascade');
+            $table->foreignId('chef_atelier_id')->nullable()->constrained('users')->onDelete('set null');
 
             $table->text('description');
             $table->enum('statut', ['en_cours', 'termine'])->default('en_cours');
