@@ -73,7 +73,7 @@ class FactureController extends Controller
                 'nbJours' => $nbJours,
             ]);
 
-            $recuName = 'recu_caisse_' . $reception->id . '_' . time() . '.pdf';
+            $recuName = 'recu_caisse_' . $reception->id . '.pdf';
             $recuPath = 'recus/' . $recuName;
 
             Storage::put('public/' . $recuPath, $pdfRecu->output());

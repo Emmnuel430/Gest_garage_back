@@ -51,7 +51,7 @@ class BilletSortieController extends Controller
                 'billetSortie' => $billet,
             ]);
 
-            $pdfName = 'fiche_sortie_vehicule_' . $reception->id . '_' . time() . '.pdf';
+            $pdfName = 'fiche_sortie_vehicule_' . $reception->id . '.pdf';
             $pdfPath = 'billets_sortie/' . $pdfName;
             Storage::put('public/' . $pdfPath, contents: $pdf->output());
 

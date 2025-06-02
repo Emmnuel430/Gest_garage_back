@@ -289,7 +289,7 @@ class ReceptionController extends Controller
                 'check' => $check,
             ]);
 
-            $pdfName = 'fiche_reception_vehicule_' . $reception->id . '_' . time() . '.pdf';
+            $pdfName = 'fiche_reception_vehicule_' . $reception->id . '.pdf';
             $pdfPath = 'receptions/' . $pdfName;
 
             Storage::put('public/' . $pdfPath, $pdf->output());
