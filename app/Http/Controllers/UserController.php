@@ -156,9 +156,13 @@ class UserController extends Controller
             return response()->json(['error' => 'Le pseudo est déjà utilisé par un autre utilisateur.'], 400);
         }
 
-        if ($req->has('role') && $req->input('role') != $user->role) {
-            return response()->json(['error' => 'Modification du rôle non autorisée.'], 403);
+        if ($req->has('role')) {
+            if ($authUser->role !== 'super_admin') {
+                return response()->json(['error' => 'Seul un super administrateur peut modifier le rôle.'], 403);
+            }
+            $user->role = $req->input('role');
         }
+
 
         $passwordChanged = false;
         if ($req->filled('password')) {
@@ -242,17 +246,6 @@ class UserController extends Controller
             'token_type' => 'Bearer',
         ], 200);
 
-    }
-
-    public function verifyUser(Request $request)
-    {
-        $user = auth()->user();
-
-        if (!$user) {
-            return response()->json(['message' => 'Non autorisé'], 401);
-        }
-
-        return response()->json(['message' => 'OK', 'user' => $user]);
     }
 
 }

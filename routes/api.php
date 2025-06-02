@@ -18,8 +18,6 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::middleware('auth:sanctum')->get('/verify-user', [UserController::class, 'verifyUser']);
-
 
 // ---------------------------------------------------------
 
@@ -57,9 +55,9 @@ Route::get('liste_user', [UserController::class, 'listeUser']);
 // Lorsque cette route est appelée, elle exécute la fonction 'delete_user' du UserController.
 Route::delete('delete_user/{id}', [UserController::class, 'deleteUser']);
 
-// Définit une route GET pour l'endpoint '/users à qui est passé l'id de l'user '.
+// Définit une route GET pour l'endpoint '/user à qui est passé l'id de l'user '.
 // Lorsque cette route est appelée, elle exécute la fonction 'getuser' du UserController.
-Route::get('users/{id}', [UserController::class, 'getUser']);
+Route::get('user/{id}', [UserController::class, 'getUser']);
 
 // Définit une route POST pour l'endpoint '/update_user à qui est passé l'id de l'user '.
 // Lorsque cette route est appelée, elle exécute la fonction 'updateUser' du UserController.
