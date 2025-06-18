@@ -158,10 +158,10 @@
                     Désignation
                 </th>
                 <th style="padding: 10px; border: 1px solid #ddd; text-align: right">
-                    Durée (en jours)
+                    Durée (en heures)
                 </th>
                 <th style="padding: 10px; border: 1px solid #ddd; text-align: right">
-                    Prix Unitaire (par jour)
+                    Prix Unitaire (par heure)
                 </th>
                 <th style="padding: 10px; border: 1px solid #ddd; text-align: right">
                     Montant
@@ -177,10 +177,10 @@
             }}<br />
                 </td>
                 <td style="padding: 10px; border: 1px solid #ddd; text-align: right">
-                    {{ $nbJours ?? 0 }}
+                    {{ $nbHeures ?? 0 }}
                 </td>
                 <td style="padding: 10px; border: 1px solid #ddd; text-align: right">
-                    {{ number_format($montantJournalier, 0, ',', ' ') }} FCFA
+                    {{ number_format($montantHoraire, 0, ',', ' ') }} FCFA
                 </td>
                 <td style="padding: 10px; border: 1px solid #ddd; text-align: right">
                     {{ number_format($montantTotal, 0, ',', ' ') }} FCFA

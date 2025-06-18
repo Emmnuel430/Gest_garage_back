@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Log;
 use App\Models\Reception;
 use App\Models\Chrono;
+use App\Models\Setting;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -53,9 +54,9 @@ class FactureController extends Controller
             $chrono->update(['duree_total' => $duration]);
 
             // Calcul du montant
-            $tarifJournalier = 15000;
-            $nbJours = ceil($duration / (60 * 24));
-            $montant = $nbJours * $tarifJournalier;
+            $tarifHoraire = (int) Setting::get('tarif_horaire', 2000);
+            $nbHeures = ceil($duration / 60);
+            $montant = $nbHeures * $tarifHoraire;
 
             // 2. Facture statut = generee
             $facture->update([
@@ -68,9 +69,9 @@ class FactureController extends Controller
             $pdfRecu = PDF::loadView('pdf.recu_caisse', [
                 'reception' => $reception,
                 'chefAtelier' => $chefAtelier,
-                'montantJournalier' => $tarifJournalier,
+                'montantHoraire' => $tarifHoraire,
                 'montantTotal' => $montant,
-                'nbJours' => $nbJours,
+                'nbHeures' => $nbHeures,
             ]);
 
             $recuName = 'recu_caisse_' . $reception->id . '.pdf';

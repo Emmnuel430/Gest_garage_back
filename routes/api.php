@@ -13,7 +13,7 @@ use App\Http\Controllers\BilletSortieController;
 use App\Http\Controllers\FactureController;
 use App\Http\Controllers\VehiculeController;
 use App\Http\Controllers\DashboardController;
-
+use App\Http\Controllers\SettingController;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
@@ -167,6 +167,24 @@ Route::get('/logs', [LogController::class, 'index']);
 // Définit une route GET pour l'endpoint '/liste_vehicules'.
 // Lorsque cette route est appelée, elle exécute la fonction 'listeVehicule' du VehiculeController.
 Route::get('liste_vehicules', [VehiculeController::class, 'listeVehicule']);
+
+
+// -----------------------------------------------
+// -----------------   Settings   --------------------
+// -----------------------------------------------
+// Définit une route POST pour l'endpoint '/settings/tarif-horaire'.
+// Lorsque cette route est appelée, elle exécute la fonction 'updateTarifHoraire' du SettingController.
+Route::post('/settings/tarif-horaire', [SettingController::class, 'updateTarifHoraire']);
+// Définit une route GET pour l'endpoint '/settings/tarif-horaire'.
+// Lorsque cette route est appelée, elle retourne le tarif horaire actuel.
+// Si le tarif horaire n'est pas défini, il retourne 2000 par défaut
+Route::get('/settings/tarif-horaire', function () {
+    return response()->json([
+        'tarif_horaire' => \App\Models\Setting::get('tarif_horaire', 2000)
+    ]);
+});
+
+
 // -----------------------------------------------
 // -----------------   Test   --------------------
 // -----------------------------------------------
@@ -176,3 +194,4 @@ Route::get('liste_vehicules', [VehiculeController::class, 'listeVehicule']);
 Route::get('/test', function () {
     return response()->json(['message' => 'API en ligne 🎉']);
 });
+
