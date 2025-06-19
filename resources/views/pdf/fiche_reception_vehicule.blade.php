@@ -163,6 +163,15 @@
     </thead>
     <tbody>
       <tr>
+        <td>Essuie-glace</td>
+        <td style="text-align: center">
+          @if($check->essuie_glace) ✔️ @endif
+        </td>
+        <td style="text-align: center">
+          @if(!$check->essuie_glace) ✔️ @endif
+        </td>
+      </tr>
+      <tr>
         <td>Pneu de secours</td>
         <td style="text-align: center">
           @if($check->pneus_secours) ✔️ @endif
