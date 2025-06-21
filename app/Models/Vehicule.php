@@ -12,8 +12,8 @@ class Vehicule extends Model
         'immatriculation',
         'marque',
         'modele',
-        'client_nom',
-        'client_tel',
+        // 'client_nom',
+        // 'client_tel',
         'fiche_entree_vehicule',
         'mecanicien_id'
     ];

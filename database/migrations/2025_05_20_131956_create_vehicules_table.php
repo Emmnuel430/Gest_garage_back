@@ -18,8 +18,8 @@ return new class extends Migration {
             $table->string('immatriculation');
             $table->string('marque');
             $table->string('modele');
-            $table->string('client_nom')->nullable();
-            $table->string('client_tel')->nullable();
+            // $table->string('client_nom')->nullable();
+            // $table->string('client_tel')->nullable();
             $table->string('fiche_entree_vehicule')->nullable();
             $table->timestamps();
 

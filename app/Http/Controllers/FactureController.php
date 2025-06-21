@@ -40,32 +40,47 @@ class FactureController extends Controller
             $vehicule = $reception->vehicule;
             $chefAtelier = User::findOrFail($reception->chef_atelier_id);
 
-            // 1. Arret du chrono
+            // 1. Arrêt du chrono
             if ($chrono->end_time) {
                 return response()->json(['message' => 'Chrono déjà arrêté.'], 400);
             }
 
             $chrono->end_time = now();
+
+            // Si le chrono était en pause → on met à jour la pause finale
+            if ($chrono->pause_time) {
+                $tempsPause = Carbon::parse($chrono->pause_time)->diffInMinutes(now());
+                $chrono->temps_total_pause += $tempsPause;
+
+                // Remise à zéro
+                $chrono->pause_time = null;
+                $chrono->resume_time = null;
+            }
+
             $chrono->save();
 
+            // Calcul de la durée nette
             $start = Carbon::parse($chrono->start_time);
             $end = Carbon::parse($chrono->end_time);
-            $duration = $start->diffInMinutes($end);
-            $chrono->update(['duree_total' => $duration]);
+            $durationBrut = $start->diffInMinutes($end);
+            $durationNet = $durationBrut - $chrono->temps_total_pause;
 
-            // Calcul du montant
+            // Enregistrer la durée nette
+            $chrono->update(['duree_total' => $durationNet]);
+
+            // 2. Calcul du montant
             $tarifHoraire = (int) Setting::get('tarif_horaire', 2000);
-            $nbHeures = ceil($duration / 60);
+            $nbHeures = ceil($durationNet / 60);
             $montant = $nbHeures * $tarifHoraire;
 
-            // 2. Facture statut = generee
+            // 3. Mise à jour de la facture
             $facture->update([
                 'montant' => $montant,
                 'date_generation' => now(),
                 'statut' => 'generee',
             ]);
 
-            // Générer le PDF du reçu de caisse
+            // 4. Générer le PDF du reçu
             $pdfRecu = PDF::loadView('pdf.recu_caisse', [
                 'reception' => $reception,
                 'chefAtelier' => $chefAtelier,
@@ -79,13 +94,11 @@ class FactureController extends Controller
 
             Storage::put('public/' . $recuPath, $pdfRecu->output());
 
-            $facture->update([
-                'recu' => $recuPath,
-            ]);
+            $facture->update(['recu' => $recuPath]);
 
+            // 5. Log de l'action
             $user = User::findOrFail($request->input('user_id'));
 
-            // Log de l'action
             Log::create([
                 'idUser' => $user->id,
                 'user_nom' => $user->last_name,
@@ -110,6 +123,7 @@ class FactureController extends Controller
             return response()->json(['message' => 'Erreur : ' . $e->getMessage()], 500);
         }
     }
+
 
     public function validerPaiement(Request $request, $id)
     {

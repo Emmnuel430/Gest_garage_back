@@ -11,17 +11,6 @@ class CheckReception extends Model
 
     protected $fillable = [
         'reception_id',
-        'essuie_glace',
-        'vitres_avant',
-        'vitres_arriere',
-        'phares_avant',
-        'phares_arriere',
-        'pneus_secours',
-        'cric',
-        'peinture',
-        'retroviseur',
-        'kit_pharmacie',
-        'triangle',
         'remarques'
     ];
 
@@ -29,4 +18,10 @@ class CheckReception extends Model
     {
         return $this->belongsTo(Reception::class);
     }
+
+    public function items()
+    {
+        return $this->hasMany(CheckReceptionItem::class, 'check_reception_id');
+    }
+
 }

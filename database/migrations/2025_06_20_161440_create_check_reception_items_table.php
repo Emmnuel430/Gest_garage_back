@@ -12,11 +12,11 @@ return new class extends Migration {
      */
     public function up()
     {
-        // Migration: check_receptions
-        Schema::create('check_receptions', function (Blueprint $table) {
+        Schema::create('check_reception_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('reception_id')->constrained()->onDelete('cascade');
-            $table->text('remarques')->nullable();
+            $table->foreignId('check_reception_id')->constrained()->onDelete('cascade');
+            $table->foreignId('check_item_id')->constrained()->onDelete('cascade');
+            $table->string('valeur'); // ex: bon, mauvais, présent, absent
             $table->timestamps();
         });
 
@@ -29,6 +29,6 @@ return new class extends Migration {
      */
     public function down()
     {
-        Schema::dropIfExists('check_receptions');
+        Schema::dropIfExists('check_reception_items');
     }
 };

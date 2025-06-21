@@ -18,6 +18,9 @@ return new class extends Migration {
 
             $table->dateTime('start_time');
             $table->timestamp('end_time')->nullable();
+            $table->timestamp('pause_time')->nullable();
+            $table->timestamp('resume_time')->nullable();
+            $table->integer('temps_total_pause')->default(0);
             $table->integer('duree_total')->nullable();
             $table->timestamps();
         });

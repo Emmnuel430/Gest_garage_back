@@ -155,109 +155,53 @@
 
   <table border="1" cellspacing="0" cellpadding="4" style="width: 100%; border-collapse: collapse; font-size: 12px">
     <thead>
-      <tr style="background-color: #f2f2f2; text-align: center">
-        <th style="width: 60%">Désignations</th>
-        <th style="width: 20%">Oui</th>
-        <th style="width: 20%">Non</th>
+      <tr style="background-color: #f2f2f2; text-align: left;">
+        <th style="width: 70%">Désignation</th>
+        <th style="width: 30%">Etat</th>
       </tr>
     </thead>
     <tbody>
+      @foreach($check->items as $item)
+        @php
+        $valeur = $item->valeur;
+        $type = $item->item->type;
+        // Définir la classe couleur selon la valeur et le type
+        $class = '';
+        if ($type === 'presence') {
+        $class = ($valeur === 'présent') ? 'text-success' : (($valeur === 'absent') ? 'text-danger' : '');
+        } elseif ($type === 'etat') {
+        $class = ($valeur === 'bon') ? 'text-success' : (in_array($valeur, ['mauvais', 'absent']) ? 'text-danger' : '');
+        }
+      @endphp
+
+        <tr>
+        <td>{{ ucfirst($item->item->nom) }}</td>
+        <td class="{{ $class }}" style="font-weight: bold; text-align: center;">
+          {{ ucfirst($valeur) }}
+        </td>
+        </tr>
+    @endforeach
+
       <tr>
-        <td>Essuie-glace</td>
-        <td style="text-align: center">
-          @if($check->essuie_glace) ✔️ @endif
-        </td>
-        <td style="text-align: center">
-          @if(!$check->essuie_glace) ✔️ @endif
-        </td>
-      </tr>
-      <tr>
-        <td>Pneu de secours</td>
-        <td style="text-align: center">
-          @if($check->pneus_secours) ✔️ @endif
-        </td>
-        <td style="text-align: center">
-          @if(!$check->pneus_secours) ✔️ @endif
-        </td>
-      </tr>
-      <tr>
-        <td>Cric de roue</td>
-        <td style="text-align: center">@if($check->cric) ✔️ @endif</td>
-        <td style="text-align: center">@if(!$check->cric) ✔️ @endif</td>
-      </tr>
-      <tr>
-        <td>État de pare-brise avant</td>
-        <td style="text-align: center">
-          @if($check->vitres_avant) ✔️ @endif
-        </td>
-        <td style="text-align: center">
-          @if(!$check->vitres_avant) ✔️ @endif
-        </td>
-      </tr>
-      <tr>
-        <td>État de pare-brise arrière</td>
-        <td style="text-align: center">
-          @if($check->vitres_arriere) ✔️ @endif
-        </td>
-        <td style="text-align: center">
-          @if(!$check->vitres_arriere) ✔️ @endif
-        </td>
-      </tr>
-      <tr>
-        <td>État de phare avant</td>
-        <td style="text-align: center">
-          @if($check->phares_avant) ✔️ @endif
-        </td>
-        <td style="text-align: center">
-          @if(!$check->phares_avant) ✔️ @endif
-        </td>
-      </tr>
-      <tr>
-        <td>État de phare arrière</td>
-        <td style="text-align: center">
-          @if($check->phares_arriere) ✔️ @endif
-        </td>
-        <td style="text-align: center">
-          @if(!$check->phares_arriere) ✔️ @endif
-        </td>
-      </tr>
-      <tr>
-        <td>État de peinture</td>
-        <td style="text-align: center">@if($check->peinture) ✔️ @endif</td>
-        <td style="text-align: center">@if(!$check->peinture) ✔️ @endif</td>
-      </tr>
-      <tr>
-        <td>Rétroviseur</td>
-        <td style="text-align: center">@if($check->retroviseur) ✔️ @endif</td>
-        <td style="text-align: center">
-          @if(!$check->retroviseur) ✔️ @endif
-        </td>
-      </tr>
-      <tr>
-        <td>Boîte à pharmacie</td>
-        <td style="text-align: center">
-          @if($check->kit_pharmacie) ✔️ @endif
-        </td>
-        <td style="text-align: center">
-          @if(!$check->kit_pharmacie) ✔️ @endif
-        </td>
-      </tr>
-      <tr>
-        <td>
-          Triangle de Signalisation <br />
-          <small>(en cas de panne)</small>
-        </td>
-        <td style="text-align: center">@if($check->triangle) ✔️ @endif</td>
-        <td style="text-align: center">@if(!$check->triangle) ✔️ @endif</td>
-      </tr>
-      <tr>
-        <td colspan="3" style="height: 80px">
+        <td colspan="2" style="height: 80px">
           <strong>Observation :</strong><br />
           {{ $check->remarques ?? ' ' }}
         </td>
       </tr>
     </tbody>
   </table>
+
+  <style>
+    .text-success {
+      color: green;
+    }
+
+    .text-danger {
+      color: red;
+    }
+  </style>
+
+
 
   <footer>
     <div>

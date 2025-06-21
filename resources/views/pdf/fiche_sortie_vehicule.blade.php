@@ -109,7 +109,7 @@
         <div class="logo">
             <img src="{{ public_path('logo.png') }}" alt="logo" />
             <div>
-                <p>(+225) 27 22 39 65 58<br />07 09 09 31 45</p>
+                <p>(+225) 27 22 39 65 58<br />(+225) 07 09 09 31 45</p>
             </div>
         </div>
     </div>

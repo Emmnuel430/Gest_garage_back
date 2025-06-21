@@ -8,14 +8,17 @@ use App\Models\Log;
 use App\Models\User;
 use App\Models\Vehicule;
 use App\Models\CheckReception;
+use App\Models\CheckItem;
+use App\Models\CheckReceptionItem;
 use App\Models\Chrono;
 use App\Models\Reparation;
-use App\Models\BilletSortie;
 use App\Models\Facture;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
+
 
 
 class ReceptionController extends Controller
@@ -26,8 +29,6 @@ class ReceptionController extends Controller
             'immatriculation' => 'required|string|max:255',
             'marque' => 'required|string|max:255',
             'modele' => 'required|string|max:255',
-            'client_nom' => 'nullable|string|max:255',
-            'client_tel' => 'nullable|string|max:50',
             'mecanicien_id' => 'required|exists:mecaniciens,id',
         ]);
 
@@ -237,56 +238,65 @@ class ReceptionController extends Controller
         DB::beginTransaction();
 
         try {
+
             $userId = $request->input('user_id');
-            $authUser = User::find($userId);
+            $authUser = User::findOrFail($userId);
 
             $vehicule = $reception->vehicule;
 
             // 1. Valider la réception
             $reception->update([
-                'statut' => 'validee', // à adapter selon ton enum ou valeur
-                'secretaire_id' => $authUser->id, // id de l'utilisateur qui valide
+                'statut' => 'validee',
+                'secretaire_id' => $authUser->id,
             ]);
 
             // 2. Créer le check_reception
-            $check = CheckReception::create([
+            $checkReception = CheckReception::create([
                 'reception_id' => $reception->id,
-                'essuie_glace' => $request->input('essuie_glace', false),
-                'vitres_avant' => $request->input('vitres_avant', false),
-                'vitres_arriere' => $request->input('vitres_arriere', false),
-                'phares_avant' => $request->input('phares_avant', false),
-                'phares_arriere' => $request->input('phares_arriere', false),
-                'pneus_secours' => $request->input('pneus_secours', false),
-                'cric' => $request->input('cric', false),
-                'peinture' => $request->input('peinture', false),
-                'retroviseur' => $request->input('retroviseur', false),
-                'kit_pharmacie' => $request->input('kit_pharmacie', false),
-                'triangle' => $request->input('triangle', false),
                 'remarques' => $request->input('remarques', ''),
             ]);
 
-            // 3. Démarrer le chrono
+            // 3. Enregistrer les éléments du check dynamiquement
+            $items = CheckItem::all();
+
+            foreach ($items as $item) {
+                $inputName = Str::slug($item->nom, '_'); // ex: 'vitres_avant'
+                $valeur = $request->input($inputName);
+
+                if ($valeur !== null) {
+                    CheckReceptionItem::create([
+                        'check_reception_id' => $checkReception->id,
+                        'check_item_id' => $item->id,
+                        'valeur' => $valeur,
+                    ]);
+                }
+            }
+
+            // 4. Démarrer le chrono
             Chrono::create([
                 'reception_id' => $reception->id,
                 'start_time' => now(),
             ]);
 
-            // 4. Démarre la réparation
+            // 5. Démarrer la réparation
             Reparation::create([
                 'reception_id' => $reception->id,
                 'description' => $reception->motif_visite,
                 'statut' => 'en_cours',
             ]);
 
-            // 5. Générer le PDF de la fiche de réception
-            // Vérifie si le PDF existe déjà
-            // Si oui, supprime-le avant de le régénérer
+            // 6. Générer le PDF
+            // Supprimer l'ancien fichier s'il existe
             if ($reception->fiche_reception_vehicule && Storage::exists('public/' . $reception->fiche_reception_vehicule)) {
                 Storage::delete('public/' . $reception->fiche_reception_vehicule);
             }
+
+            // Charger les relations nécessaires pour le PDF
+            $checkReception->load('items.item');
+
             $pdf = PDF::loadView('pdf.fiche_reception_vehicule', [
                 'reception' => $reception,
-                'check' => $check,
+                'check' => $checkReception, // C’est bien le bon objet ici
             ]);
 
             $pdfName = 'fiche_reception_vehicule_' . $reception->id . '.pdf';
@@ -298,7 +308,7 @@ class ReceptionController extends Controller
                 'fiche_reception_vehicule' => $pdfPath,
             ]);
 
-            DB::commit();
+            // 7. Log
             Log::create([
                 'idUser' => $authUser->id,
                 'user_nom' => $authUser->last_name,
@@ -311,6 +321,8 @@ class ReceptionController extends Controller
                 'details' => "Réception validée pour le véhicule {$vehicule->immatriculation} (Réception ID : {$reception->id})",
                 'created_at' => now(),
             ]);
+
+            DB::commit();
 
             return response()->json([
                 'message' => 'Réception validée, check effectué, chrono démarré et fiche générée.',
