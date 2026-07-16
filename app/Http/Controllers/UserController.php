@@ -248,4 +248,25 @@ class UserController extends Controller
 
     }
 
+    public function logout(Request $request)
+    {
+        // Vérifie que Sanctum voit bien ton user
+        // \Log::info('User dans logout', ['user' => $request->user()]);
+
+        /* Si tu veux juste supprimer le dernier token (celui utilisé pour la requête actuelle)
+            * (utile si tu veux garder d'autres sessions actives sur d'autres appareils)
+            $token = $request->user()->currentAccessToken();
+            if ($token && method_exists($token, 'delete')) {
+                $token->delete();
+            }
+        */
+
+        $user = $request->user();
+        if ($user) {
+            $user->tokens()->delete(); // supprime tous les tokens du user
+        }
+
+        return response()->json(['message' => 'Déconnecté']);
+    }
+
 }
