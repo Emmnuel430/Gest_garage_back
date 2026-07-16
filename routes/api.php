@@ -37,10 +37,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Définit une route POST pour l'endpoint '/logout'.
     // Lorsque cette route est appelée, elle exécute la fonction suivante.
-    Route::post('/logout', function (Request $request) {
-        $request->user()->currentAccessToken()->delete();
-        return response()->json(['message' => 'Déconnecté avec succès']);
-    })->middleware('auth:sanctum');
+    // Logout
+    Route::post('/logout', [UserController::class, 'logout']);
 
     // Définit une route POST pour l'endpoint '/register'.
     // Lorsque cette route est appelée, elle exécute la fonction 'register' du UserController.
@@ -196,16 +194,6 @@ Route::middleware('auth:sanctum')->group(function () {
         return \App\Models\CheckItem::all(); // Ou CheckItemResource si tu veux formater
     });
 });
-
-
-
-// ---------------------------------------------------------
-
-
-// Route::get('/dashboard_stats', [DashboardController::class, 'index']);
-
-
-
 
 
 // -----------------------------------------------
