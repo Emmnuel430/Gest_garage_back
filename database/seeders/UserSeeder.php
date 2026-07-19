@@ -24,7 +24,7 @@ class UserSeeder extends Seeder
             'first_name' => $faker->firstName(),
             'last_name' => $faker->lastName(),
             'pseudo' => $faker->unique()->userName(),
-            'password' => bcrypt('12345'),
+            'password' => bcrypt('pass12345'),
             'role' => 'super_admin',
         ]);
 
