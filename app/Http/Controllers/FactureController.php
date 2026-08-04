@@ -69,9 +69,16 @@ class FactureController extends Controller
             $chrono->update(['duree_total' => $durationNet]);
 
             // 2. Calcul du montant
-            $tarifHoraire = (int) Setting::get('tarif_horaire', 2000);
+            $tarifHoraire = (int) Setting::get('tarif_horaire', 1000);
             $nbHeures = ceil($durationNet / 60);
-            $montant = $nbHeures * $tarifHoraire;
+            $coutHoraire = $nbHeures * $tarifHoraire;
+
+            $durationDays = $durationNet / 1440;
+            $joursSup = $durationDays > 1 ? (int) ceil($durationDays - 1) : 0;
+            $coutJournalier = $joursSup * 2000;
+
+            $priseEnCharge = 5000;
+            $montant = $priseEnCharge + $coutHoraire + $coutJournalier;
 
             // 3. Mise à jour de la facture
             $facture->update([
@@ -87,6 +94,9 @@ class FactureController extends Controller
                 'montantHoraire' => $tarifHoraire,
                 'montantTotal' => $montant,
                 'nbHeures' => $nbHeures,
+                'priseEnCharge' => $priseEnCharge,
+                'joursSup' => $joursSup,
+                'tarifJournalier' => 2000,
             ]);
 
             $recuName = 'recu_caisse_' . $reception->id . '.pdf';
