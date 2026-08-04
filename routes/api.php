@@ -14,10 +14,9 @@ use App\Http\Controllers\FactureController;
 use App\Http\Controllers\VehiculeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SettingController;
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return response()->json(['user' => $request->user()]);
-    ;
-});
+use App\Http\Controllers\OutilController;
+use App\Http\Controllers\PretOutilController;
+Route::middleware('auth:sanctum')->get('/user', fn(Request $request) => response()->json(['user' => $request->user()]));
 
 // Définit une route POST pour l'endpoint '/login'.
 // Lorsque cette route est appelée, elle exécute la fonction 'login' du UserController.
@@ -76,6 +75,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Définit une route GET pour l'endpoint '/mecanicien/{id}'.
     // Lorsque cette route est appelée, elle exécute la fonction 'show' du MecanicienController.
     Route::get('mecanicien/{id}', [MecanicienController::class, 'show']);
+
+    // Outils actifs prêtés à un mécanicien
+    Route::get('mecaniciens/{id}/outils-actifs', [MecanicienController::class, 'outilsActifs']);
 
     // Définit une route POST pour l'endpoint '/update_mecanicien/{id}'.
     // Lorsque cette route est appelée, elle exécute la fonction 'update' du MecanicienController.
@@ -178,12 +180,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/settings/tarif-horaire', [SettingController::class, 'updateTarifHoraire']);
     // Définit une route GET pour l'endpoint '/settings/tarif-horaire'.
     // Lorsque cette route est appelée, elle retourne le tarif horaire actuel.
-    // Si le tarif horaire n'est pas défini, il retourne 2000 par défaut
-    Route::get('/settings/tarif-horaire', function () {
-        return response()->json([
-            'tarif_horaire' => \App\Models\Setting::get('tarif_horaire', 2000)
-        ]);
-    });
+    // Si le tarif horaire n'est pas défini, il retourne 1000 par défaut
+    Route::get('/settings/tarif-horaire', fn() => response()->json([
+        'tarif_horaire' => \App\Models\Setting::get('tarif_horaire', 1000)
+    ]));
 
 
     // -----------------------------------------------
@@ -193,6 +193,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/check-items', function () {
         return \App\Models\CheckItem::all(); // Ou CheckItemResource si tu veux formater
     });
+
+    // -----------------------------------------------
+    // -----------------   Outils & Prets   ----------
+    // -----------------------------------------------
+    Route::get('/outils', [OutilController::class, 'index']);
+    Route::post('/add_outil', [OutilController::class, 'store']);
+    Route::post('/update_outil/{id}', [OutilController::class, 'update']);
+    Route::delete('/delete_outil/{id}', [OutilController::class, 'destroy']);
+    Route::get('/prets_outils', [PretOutilController::class, 'index']);
+    Route::post('/prete_outil', [PretOutilController::class, 'preteOutil']);
+    Route::post('/restitue_outil/{id}', [PretOutilController::class, 'restitueOutil']);
 });
 
 
@@ -202,7 +213,5 @@ Route::middleware('auth:sanctum')->group(function () {
 // Définit une route GET pour l'endpoint '/test'.
 // Lorsque cette route est appelée, elle retourne un message JSON indiquant que l'API est en ligne.
 // Cette route est utilisée pour vérifier si l'API fonctionne correctement.
-Route::get('/test', function () {
-    return response()->json(['message' => 'API en ligne 🎉']);
-});
+Route::get('/test', fn() => response()->json(['message' => 'API en ligne 🎉']));
 

@@ -182,20 +182,12 @@ class UserController extends Controller
                 continue;
             if (array_key_exists($key, $oldData) && $oldData[$key] != $value) {
                 // Traduction du champ
-                switch ($key) {
-                    case 'first_name':
-                        $modifications[] = "Prénom modifié";
-                        break;
-                    case 'last_name':
-                        $modifications[] = "Nom modifié";
-                        break;
-                    case 'pseudo':
-                        $modifications[] = "Pseudo modifié";
-                        break;
-                    // Ajoute d'autres cas si besoin
-                    default:
-                        $modifications[] = ucfirst($key) . " modifié";
-                }
+                $modifications[] = match ($key) {
+                    'first_name' => "Prénom modifié",
+                    'last_name' => "Nom modifié",
+                    'pseudo' => "Pseudo modifié",
+                    default => ucfirst($key) . " modifié",
+                };
             }
         }
 

@@ -174,4 +174,16 @@ class MecanicienController extends Controller
 
         return response()->json(['status' => 'deleted', 'message' => 'Mécanicien supprimé avec succès.'], 200);
     }
+
+    // Récupérer les outils actifs prêtés à un mécanicien
+    public function outilsActifs($id)
+    {
+        $outilsPretes = \App\Models\PretOutil::where('mecanicien_id', $id)
+            ->where('statut', 'prete')
+            ->with('outil')
+            ->get();
+
+        return response()->json($outilsPretes);
+    }
 }
+

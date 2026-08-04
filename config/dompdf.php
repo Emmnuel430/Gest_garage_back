@@ -1,6 +1,6 @@
 <?php
 
-return array(
+return [
 
     /*
     |--------------------------------------------------------------------------
@@ -20,7 +20,7 @@ return array(
      */
     'convert_entities' => true,
 
-    'options' => array(
+    'options' => [
         'font_dir' => resource_path('fonts/'),
         'font_cache' => storage_path('fonts/'),
 
@@ -255,7 +255,7 @@ return array(
          * @var bool
          */
         "enable_html5_parser" => true,
-    ),
+    ],
 
 
-);
+];
