@@ -169,12 +169,22 @@
             </tr>
         </thead>
         <tbody>
+            <!-- Prise en charge initiale -->
             <tr>
-                <td style="padding: 10px; border: 1px solid #ddd">
-                    {{ $reception->vehicule->marque ?? '...' }} - {{
-    $reception->vehicule->modele ?? '...' }}<br />
-                    Immatriculation : {{ $reception->vehicule->immatriculation ?? '...'
-            }}<br />
+                <td style="padding: 10px; border: 1px solid #ddd; text-align: left">
+                    Prise en charge initiale (Entrée véhicule)
+                </td>
+                <td style="padding: 10px; border: 1px solid #ddd; text-align: right">-</td>
+                <td style="padding: 10px; border: 1px solid #ddd; text-align: right">-</td>
+                <td style="padding: 10px; border: 1px solid #ddd; text-align: right">
+                    {{ number_format($priseEnCharge ?? 5000, 0, ',', ' ') }} FCFA
+                </td>
+            </tr>
+            <!-- Main d'œuvre -->
+            <tr>
+                <td style="padding: 10px; border: 1px solid #ddd; text-align: left">
+                    Main d'œuvre ({{ $reception->vehicule->marque ?? '...' }}
+                    {{ $reception->vehicule->modele ?? '...' }} - {{ $reception->vehicule->immatriculation ?? '...' }})
                 </td>
                 <td style="padding: 10px; border: 1px solid #ddd; text-align: right">
                     {{ $nbHeures ?? 0 }}
@@ -183,9 +193,26 @@
                     {{ number_format($montantHoraire, 0, ',', ' ') }} FCFA
                 </td>
                 <td style="padding: 10px; border: 1px solid #ddd; text-align: right">
-                    {{ number_format($montantTotal, 0, ',', ' ') }} FCFA
+                    {{ number_format(($nbHeures ?? 0) * $montantHoraire, 0, ',', ' ') }} FCFA
                 </td>
             </tr>
+            <!-- Surcharge J+1 -->
+            @if(($joursSup ?? 0) > 0)
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd; text-align: left">
+                        Surcharge journalière (J+1)
+                    </td>
+                    <td style="padding: 10px; border: 1px solid #ddd; text-align: right">
+                        {{ $joursSup }}
+                    </td>
+                    <td style="padding: 10px; border: 1px solid #ddd; text-align: right">
+                        {{ number_format($tarifJournalier ?? 2000, 0, ',', ' ') }} FCFA
+                    </td>
+                    <td style="padding: 10px; border: 1px solid #ddd; text-align: right">
+                        {{ number_format($joursSup * ($tarifJournalier ?? 2000), 0, ',', ' ') }} FCFA
+                    </td>
+                </tr>
+            @endif
             <tr>
                 <td colspan="3" style="padding: 10px; border: 1px solid #ddd; text-align: right">
                     <strong>Imposition</strong>

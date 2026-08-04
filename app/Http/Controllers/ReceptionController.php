@@ -346,11 +346,21 @@ class ReceptionController extends Controller
             $chefAtelier = User::findOrFail($userId);
             $vehicule = $reception->vehicule;
 
+            $reparation = Reparation::where('reception_id', $reception->id)->firstOrFail();
+
+            // Check if there are tools still on loan (prete) for this repair
+            $unreturnedTools = \App\Models\PretOutil::where('reparation_id', $reparation->id)
+                ->where('statut', 'prete')
+                ->exists();
+
+            if ($unreturnedTools) {
+                return response()->json(['message' => 'Impossible de terminer la réparation : tous les outils prêtés ne sont pas restitués.'], 400);
+            }
+
             $reception->update([
                 'chef_atelier_id' => $chefAtelier->id,
             ]);
             // 1. Terminer la reparation
-            $reparation = Reparation::where('reception_id', $reception->id)->firstOrFail();
             $reparation->update([
                 'chef_atelier_id' => $userId,
                 'statut' => 'termine'
