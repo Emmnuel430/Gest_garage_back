@@ -16,23 +16,9 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $allReceptions = Reception::all();
 
-        if ($allReceptions->isEmpty()) {
-            $receptionsAttente = "0";
-            $receptionsValidee = "0";
-        } else {
-            $receptionsAttenteCount = $allReceptions->where('statut', 'attente')->count();
-            $receptionsValideeCount = $allReceptions->where('statut', 'validee')->count();
-
-            $receptionsAttente = $receptionsAttenteCount > 0
-                ? $receptionsAttenteCount
-                : "✅";
-
-            $receptionsValidee = $receptionsValideeCount > 0
-                ? $receptionsValideeCount
-                : "✅";
-        }
+        $receptionsAttente = Reception::where('statut', 'attente')->count();
+        $receptionsValidee = Reception::where('statut', 'validee')->count();
         // --------------
         $beneficesParJour = Facture::selectRaw('DATE(date_paiement) as date, SUM(montant) as total')
             ->whereNotNull('date_paiement') // facultatif selon ta logique de paiement
@@ -46,7 +32,7 @@ class DashboardController extends Controller
             ->orderBy('date')
             ->get();
         // ----------------
-        $latestReceptions = Reception::with('vehicule', 'gardien', )
+        $latestReceptions = Reception::with('vehicule', 'creePar', 'gardien')
             // ->where('statut', 'attente')
             ->orderBy('created_at', 'desc')
             ->take(10)
@@ -75,10 +61,12 @@ class DashboardController extends Controller
                 ->take(5)
                 ->get(),
             'latest_logs' => Log::latest()->take(6)->get(),
-            'latest_chronos_en_cours' => Chrono::whereNull('end_time')
+            'latest_chronos_en_cours' => Chrono::with('reception.vehicule')
+                ->whereIn('statut', ['en_cours', 'en_pause'])
                 ->latest()
-                ->take(5)
+                // ->take(3)
                 ->get(),
+
 
 
         ]);

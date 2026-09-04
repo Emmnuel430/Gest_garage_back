@@ -16,18 +16,43 @@ use Carbon\Carbon;
 
 class FactureController extends Controller
 {
-    public function listeFacture()
+    public function listeFacture(Request $request)
     {
-        $facture = Facture::with([
+        $query = Facture::with([
             'reception.vehicule.mecanicien',
             'reception.reparation',
             'reception.chrono',
+            'user',
             'caissier',
             'reception.billetSortie.chefAtelier',
-        ])->get();
-        return response()->json($facture);
-    }
+        ]);
 
+        if ($request->filled('search')) {
+            $search = $request->query('search');
+            $query->whereHas('reception.vehicule', function ($q) use ($search) {
+                $q->where('immatriculation', 'like', "%{$search}%")
+                    ->orWhere('marque', 'like', "%{$search}%")
+                    ->orWhere('modele', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('statut')) {
+            $query->where('statut', $request->query('statut'));
+        }
+
+        $factures = $query->latest()->paginate(15);
+
+        return response()->json([
+            'status' => 'success',
+            'factures' => $factures->items(),
+            'pagination' => [
+                'current_page' => $factures->currentPage(),
+                'per_page' => $factures->perPage(),
+                'total' => $factures->total(),
+                'last_page' => $factures->lastPage(),
+            ],
+        ]);
+    }
 
     public function genererFactureEtArreterChrono(Request $request, $id)
     {
@@ -38,7 +63,7 @@ class FactureController extends Controller
             $facture = Facture::where('reception_id', $id)->firstOrFail();
             $chrono = Chrono::where('reception_id', $id)->firstOrFail();
             $vehicule = $reception->vehicule;
-            $chefAtelier = User::findOrFail($reception->chef_atelier_id);
+            $repairUser = $reception->reparePar ?? $reception->creePar ?? User::find($reception->repaired_by_id) ?? User::first();
 
             // 1. Arrêt du chrono
             if ($chrono->end_time) {
@@ -56,7 +81,7 @@ class FactureController extends Controller
                 $chrono->pause_time = null;
                 $chrono->resume_time = null;
             }
-
+            $chrono->statut = 'termine';
             $chrono->save();
 
             // Calcul de la durée nette
@@ -90,7 +115,8 @@ class FactureController extends Controller
             // 4. Générer le PDF du reçu
             $pdfRecu = PDF::loadView('pdf.recu_caisse', [
                 'reception' => $reception,
-                'chefAtelier' => $chefAtelier,
+                'user' => $repairUser,
+                'chefAtelier' => $repairUser,
                 'montantHoraire' => $tarifHoraire,
                 'montantTotal' => $montant,
                 'nbHeures' => $nbHeures,
@@ -107,7 +133,7 @@ class FactureController extends Controller
             $facture->update(['recu' => $recuPath]);
 
             // 5. Log de l'action
-            $user = User::findOrFail($request->input('user_id'));
+            $user = $request->user();
 
             Log::create([
                 'idUser' => $user->id,
@@ -137,11 +163,10 @@ class FactureController extends Controller
 
     public function validerPaiement(Request $request, $id)
     {
-        $userId = $request->input('user_id');
-        $authUser = User::find($userId);
+        $authUser = $request->user();
 
         if (!$authUser) {
-            return response()->json(['message' => 'Utilisateur introuvable'], status: 404);
+            return response()->json(['message' => 'Non autorisé'], 401);
         }
 
         $facture = Facture::find($id);
@@ -151,7 +176,7 @@ class FactureController extends Controller
         }
 
         $facture->statut = 'payee';
-        $facture->caissier_id = $authUser->id;
+        $facture->user_id = $authUser->id;
         $facture->date_paiement = now();
         $facture->save();
 

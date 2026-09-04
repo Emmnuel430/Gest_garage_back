@@ -126,13 +126,13 @@
             H:i') ?? '...' }}
                 </p>
                 <p>
-                    <strong>Enregistré par :</strong> {{ $reception->gardien->first_name
-    ?? '...' }} {{ $reception->gardien->last_name ?? '' }}
+                    <strong>Enregistré par :</strong> {{ ($reception->creePar ?? $reception->gardien)->first_name
+    ?? '...' }} {{ ($reception->creePar ?? $reception->gardien)->last_name ?? '' }}
                 </p>
                 <p>
-                    <strong>Chef Atelier :</strong> {{
-    $chefAtelier->first_name ?? '...' }} {{
-    $chefAtelier->last_name ?? '' }}
+                    <strong>Gérant :</strong> {{
+    ($user ?? $chefAtelier)->first_name ?? '...' }} {{
+    ($user ?? $chefAtelier)->last_name ?? '' }}
                 </p>
                 <p>
                     <strong>Mécanicien :</strong> {{
@@ -140,7 +140,7 @@
     $reception->vehicule->mecanicien->prenom ?? '...' }}
                 </p>
                 <p>
-                    <strong>Numéro de téléphone :</strong> {{
+                    <strong>Numéro de téléphone mecanicien :</strong> {{
     $reception->vehicule->mecanicien->contact ?? '...' }}
                 </p>
                 <p>

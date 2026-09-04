@@ -20,7 +20,8 @@ Route::middleware('auth:sanctum')->get('/user', fn(Request $request) => response
 
 // Définit une route POST pour l'endpoint '/login'.
 // Lorsque cette route est appelée, elle exécute la fonction 'login' du UserController.
-Route::post('login', [UserController::class, 'login']);
+// Throttle: 5 tentatives max par minute par IP pour prévenir les attaques par force brute.
+Route::middleware('throttle:5,1')->post('login', [UserController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     // -----------------------------------------------
     // -------------   Dashboard   ----------------------
@@ -50,6 +51,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Définit une route DELETE pour l'endpoint '/delete_user à qui est passé l'id de l'user'.
     // Lorsque cette route est appelée, elle exécute la fonction 'delete_user' du UserController.
     Route::delete('delete_user/{id}', [UserController::class, 'deleteUser']);
+    Route::delete('delete_users_multiple', [UserController::class, 'deleteUsersMultiple']);
 
     // Définit une route GET pour l'endpoint '/user à qui est passé l'id de l'user '.
     // Lorsque cette route est appelée, elle exécute la fonction 'getuser' du UserController.
@@ -178,12 +180,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Définit une route POST pour l'endpoint '/settings/tarif-horaire'.
     // Lorsque cette route est appelée, elle exécute la fonction 'updateTarifHoraire' du SettingController.
     Route::post('/settings/tarif-horaire', [SettingController::class, 'updateTarifHoraire']);
-    // Définit une route GET pour l'endpoint '/settings/tarif-horaire'.
-    // Lorsque cette route est appelée, elle retourne le tarif horaire actuel.
-    // Si le tarif horaire n'est pas défini, il retourne 1000 par défaut
-    Route::get('/settings/tarif-horaire', fn() => response()->json([
-        'tarif_horaire' => \App\Models\Setting::get('tarif_horaire', 1000)
-    ]));
+    Route::get('/settings/tarif-horaire', [SettingController::class, 'getSettings']);
+    Route::post('/settings/tarifs', [SettingController::class, 'updateSettings']);
+    Route::get('/settings/tarifs', [SettingController::class, 'getSettings']);
 
 
     // -----------------------------------------------
@@ -204,6 +203,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/prets_outils', [PretOutilController::class, 'index']);
     Route::post('/prete_outil', [PretOutilController::class, 'preteOutil']);
     Route::post('/restitue_outil/{id}', [PretOutilController::class, 'restitueOutil']);
+    Route::match(['put', 'post'], '/update_pret/{id}', [PretOutilController::class, 'updatePret']);
 });
 
 

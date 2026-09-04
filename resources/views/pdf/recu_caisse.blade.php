@@ -112,7 +112,7 @@
     <div class="title">REÇU DE CAISSE</div>
 
     <div style="text-align: right; font-size: 14px">
-        <strong>date :</strong>
+        <strong>Date de generation :</strong>
         {{ \Carbon\Carbon::now()->format('d/m/Y à H:i') ?? '...' }}
     </div>
 
@@ -125,14 +125,14 @@
 
         <p>
             <strong>Enregistré par :</strong>
-            {{ $reception->gardien->first_name ?? '...' }} {{
-    $reception->gardien->last_name ?? '' }}
+            {{ ($reception->creePar ?? $reception->gardien)->first_name ?? '...' }} {{
+    ($reception->creePar ?? $reception->gardien)->last_name ?? '' }}
         </p>
 
         <p>
-            <strong>Chef Atelier :</strong>
-            {{ $chefAtelier->first_name ?? '...' }} {{
-    $chefAtelier->last_name ?? '' }}
+            <strong>Gérant :</strong>
+            {{ ($user ?? $chefAtelier)->first_name ?? '...' }} {{
+    ($user ?? $chefAtelier)->last_name ?? '' }}
         </p>
 
         <p>
@@ -142,7 +142,7 @@
         </p>
 
         <p>
-            <strong>Numéro de téléphone :</strong>
+            <strong>Numéro de téléphone mecanicien :</strong>
             {{ $reception->vehicule->mecanicien->contact ?? '...' }}
         </p>
     </div>
@@ -158,10 +158,10 @@
                     Désignation
                 </th>
                 <th style="padding: 10px; border: 1px solid #ddd; text-align: right">
-                    Durée (en heures)
+                    Durée
                 </th>
                 <th style="padding: 10px; border: 1px solid #ddd; text-align: right">
-                    Prix Unitaire (par heure)
+                    Prix Unitaire
                 </th>
                 <th style="padding: 10px; border: 1px solid #ddd; text-align: right">
                     Montant
@@ -185,6 +185,7 @@
                 <td style="padding: 10px; border: 1px solid #ddd; text-align: left">
                     Main d'œuvre ({{ $reception->vehicule->marque ?? '...' }}
                     {{ $reception->vehicule->modele ?? '...' }} - {{ $reception->vehicule->immatriculation ?? '...' }})
+                    en heure(s)
                 </td>
                 <td style="padding: 10px; border: 1px solid #ddd; text-align: right">
                     {{ $nbHeures ?? 0 }}
@@ -200,7 +201,7 @@
             @if(($joursSup ?? 0) > 0)
                 <tr>
                     <td style="padding: 10px; border: 1px solid #ddd; text-align: left">
-                        Surcharge journalière (J+1)
+                        Surcharge journalière (J+1) en jour(s)
                     </td>
                     <td style="padding: 10px; border: 1px solid #ddd; text-align: right">
                         {{ $joursSup }}

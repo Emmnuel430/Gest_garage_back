@@ -14,8 +14,9 @@ class MecanicienController extends Controller
     // Ajouter un mécanicien
     public function store(Request $request)
     {
+        $user = $request->user();
+
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
             'type' => 'required|string',
@@ -25,38 +26,19 @@ class MecanicienController extends Controller
             'contact_urgence' => 'nullable|string',
         ]);
 
-        // Vérification de l'existence du mecanicien
+        $validated['user_id'] = $user->id;
 
+        // Vérification de l'existence du mécanicien
         $existingMecanicien = Mecanicien::where('nom', $validated['nom'])
             ->where('prenom', $validated['prenom'])
             ->first();
+
         if ($existingMecanicien) {
             return response()->json(['error' => 'Ce mécanicien existe déjà.'], 400);
         }
 
-        $mecanicien = Mecanicien::create(array_merge($validated));
-
-        // Génération du PDF
-        $pdf = Pdf::loadView('pdf.fiche_mecanicien', compact('mecanicien'));
-        $pdfPath = 'fiches_mecaniciens/fiche_' . $mecanicien->id . '.pdf';
-        Storage::disk('public')->put($pdfPath, $pdf->output());
-
-        $mecanicien->update(['fiche_enrolement' => $pdfPath]);
-
-        // Log
-        $admin = User::find($request->input('user_id'));
-        Log::create([
-            'idUser' => $admin->id,
-            'user_nom' => $admin->last_name,
-            'user_prenom' => $admin->first_name,
-            'user_pseudo' => $admin->pseudo,
-            'user_role' => $admin->role,
-            'user_doc' => $admin->created_at,
-            'action' => 'add',
-            'table_concernee' => 'mecaniciens',
-            'details' => "Mécanicien ajouté : {$mecanicien->nom} {$mecanicien->prenom} (ID: {$mecanicien->id})",
-            'created_at' => now(),
-        ]);
+        // L'Observer intercepte la création ici et exécute automatiquement les PDFs et les Logs
+        $mecanicien = Mecanicien::create($validated);
 
         return response()->json([
             'status' => 'success',
@@ -80,13 +62,41 @@ class MecanicienController extends Controller
     }
 
     // Lister tous les mécaniciens
-    public function index()
+    public function index(Request $request)
     {
-        $mecaniciens = Mecanicien::with(['reparations.reception.vehicule'])->get();
+        $query = Mecanicien::with(['reparations.reception.vehicule']);
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->query('type'));
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->query('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('nom', 'like', "%{$search}%")
+                    ->orWhere('prenom', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->boolean('all') || $request->query('all') === 'true') {
+            $mecaniciens = $query->latest()->get();
+            return response()->json([
+                'status' => 'success',
+                'mecaniciens' => $mecaniciens,
+            ]);
+        }
+
+        $mecaniciens = $query->latest()->paginate(15);
 
         return response()->json([
             'status' => 'success',
-            'mecaniciens' => $mecaniciens
+            'mecaniciens' => $mecaniciens->items(),
+            'pagination' => [
+                'current_page' => $mecaniciens->currentPage(),
+                'per_page' => $mecaniciens->perPage(),
+                'total' => $mecaniciens->total(),
+                'last_page' => $mecaniciens->lastPage(),
+            ],
         ]);
     }
 
@@ -119,19 +129,21 @@ class MecanicienController extends Controller
         $mecanicien->update(['fiche_enrolement' => $pdfPath]);
 
         // Log
-        $admin = User::find($request->input('user_id'));
-        Log::create([
-            'idUser' => $admin->id,
-            'user_nom' => $admin->last_name,
-            'user_prenom' => $admin->first_name,
-            'user_pseudo' => $admin->pseudo,
-            'user_role' => $admin->role,
-            'user_doc' => $admin->created_at,
-            'action' => 'update',
-            'table_concernee' => 'mecaniciens',
-            'details' => "Mécanicien modifié : {$mecanicien->nom} {$mecanicien->prenom} (ID: {$mecanicien->id})",
-            'created_at' => now(),
-        ]);
+        $admin = $request->user();
+        if ($admin) {
+            Log::create([
+                'idUser' => $admin->id,
+                'user_nom' => $admin->last_name,
+                'user_prenom' => $admin->first_name,
+                'user_pseudo' => $admin->pseudo,
+                'user_role' => $admin->role,
+                'user_doc' => $admin->created_at,
+                'action' => 'update',
+                'table_concernee' => 'mecaniciens',
+                'details' => "Mécanicien modifié : {$mecanicien->nom} {$mecanicien->prenom} (ID: {$mecanicien->id})",
+                'created_at' => now(),
+            ]);
+        }
 
         return response()->json([
             'status' => 'success',
@@ -143,9 +155,9 @@ class MecanicienController extends Controller
     // Supprimer un mécanicien
     public function destroy(Request $request, $id)
     {
-        $authUser = User::find($request->query('user_id'));
+        $authUser = $request->user();
         if (!$authUser) {
-            return response()->json(['error' => 'Utilisateur invalide.'], 400);
+            return response()->json(['error' => 'Non autorisé.'], 401);
         }
 
         $mecanicien = Mecanicien::find($id);

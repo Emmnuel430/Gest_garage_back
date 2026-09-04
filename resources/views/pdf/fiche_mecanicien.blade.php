@@ -103,7 +103,7 @@
 
     <table class="info-table">
         <tr>
-            <td><strong>Nom :</strong> {{ $mecanicien->nom ?? '...' }}</td>
+            <td><strong>Nom :</strong> {{ $mecanicien->nom ?? 'Non défini' }}</td>
             <td rowspan="6" style="text-align: right">
                 <div class="photo">
                     <span class="photo-text">Photo</span>
@@ -111,20 +111,22 @@
             </td>
         </tr>
         <tr>
-            <td><strong>Prénom :</strong> {{ $mecanicien->prenom ?? '...' }}</td>
+            <td><strong>Prénom :</strong> {{ $mecanicien->prenom ?? 'Non défini' }}</td>
         </tr>
         <tr>
-            <td><strong>Contact :</strong> {{ $mecanicien->contact ?? '...' }}</td>
+            <td><strong>Contact :</strong> {{ $mecanicien->contact ?? 'Non défini' }}</td>
         </tr>
         <tr>
-            <td><strong>Expérience professionnelle :</strong> {{ $mecanicien->experience ?? '...' }} ans</td>
+            <td><strong>Expérience professionnelle :</strong> {{ $mecanicien->experience ?? 'Non défini' }} ans</td>
         </tr>
         <tr>
-            <td><strong>Marque de voiture maîtrisée :</strong> {{ $mecanicien->vehicules_maitrises ?? '...' }}</td>
+            <td><strong>Marque de voiture maîtrisée :</strong> {{ $mecanicien->vehicules_maitrises ?? 'Non défini' }}
+            </td>
         </tr>
         <tr>
             <td colspan="2"><strong>N° à contacter en cas d'urgence :</strong>
-                {{ $mecanicien->contact_urgence ?? '...' }}</td>
+                {{ $mecanicien->contact_urgence ?? 'Non défini' }}
+            </td>
         </tr>
     </table>
 

@@ -110,8 +110,8 @@
         </tr>
         <tr>
             <td>
-                <strong>Enregistré par :</strong> {{ $reception->gardien->first_name
-    ?? '...' }} {{ $reception->gardien->last_name ?? '' }}
+                <strong>Enregistré par :</strong> {{ ($reception->creePar ?? $reception->gardien)->first_name
+    ?? '...' }} {{ ($reception->creePar ?? $reception->gardien)->last_name ?? '' }}
             </td>
         </tr>
         <tr>
@@ -122,7 +122,8 @@
         </tr>
         <tr>
             <td>
-                <strong>Numéro de téléphone :</strong> {{ $reception->vehicule->mecanicien->contact ?? '...' }}
+                <strong>Numéro de téléphone mecanicien :</strong>
+                {{ $reception->vehicule->mecanicien->contact ?? '...' }}
             </td>
         </tr>
         <tr>

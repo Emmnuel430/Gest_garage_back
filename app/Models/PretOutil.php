@@ -16,6 +16,7 @@ class PretOutil extends Model
         'reparation_id',
         'mecanicien_id',
         'quantite',
+        'quantite_pretee',
         'statut',
         'est_partage',
         'parent_pret_id'

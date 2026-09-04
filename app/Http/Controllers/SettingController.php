@@ -8,13 +8,34 @@ use App\Models\Log;
 
 class SettingController extends Controller
 {
-    public function updateTarifHoraire(Request $request)
+    public function getSettings()
+    {
+        return response()->json([
+            'tarif_horaire' => (int) Setting::get('tarif_horaire', 1000),
+            'prix_entree' => (int) Setting::get('prix_entree', 5000),
+            'tarif_jours_supp' => (int) Setting::get('tarif_jours_supp', 2000),
+        ]);
+    }
+
+    public function updateSettings(Request $request)
     {
         $request->validate([
-            'tarif_horaire' => 'required|integer|min:0',
+            'tarif_horaire' => 'nullable|integer|min:0',
+            'prix_entree' => 'nullable|integer|min:0',
+            'tarif_jours_supp' => 'nullable|integer|min:0',
         ]);
 
-        Setting::set('tarif_horaire', $request->tarif_horaire);
+        if ($request->has('tarif_horaire')) {
+            Setting::set('tarif_horaire', $request->tarif_horaire);
+        }
+
+        if ($request->has('prix_entree')) {
+            Setting::set('prix_entree', $request->prix_entree);
+        }
+
+        if ($request->has('tarif_jours_supp')) {
+            Setting::set('tarif_jours_supp', $request->tarif_jours_supp);
+        }
 
         $user = $request->user();
         if ($user) {
@@ -27,14 +48,17 @@ class SettingController extends Controller
                 'user_doc' => $user->created_at,
                 'action' => 'update',
                 'table_concernee' => 'settings',
-                'details' => "Tarif horaire mis à jour à {$request->tarif_horaire} FCFA",
+                'details' => "Mise à jour des tarifs (Horaire: {$request->tarif_horaire}, Entrée: {$request->prix_entree}, Jours supp: {$request->tarif_jours_supp})",
             ]);
         }
 
-        return response()->json([
-            'message' => 'Tarif horaire mis à jour',
-            'tarif_horaire' => $request->tarif_horaire,
-        ]);
+        return $this->getSettings();
+    }
+
+    public function updateTarifHoraire(Request $request)
+    {
+        return $this->updateSettings($request);
     }
 }
+
 

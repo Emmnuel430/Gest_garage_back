@@ -28,17 +28,16 @@ class UserController extends Controller
         $user->save();
 
         // Enregistrement du log
-        $adminId = $req->input('admin_id');
-        $admin = User::find($adminId);
+        $actingUser = $req->user();
 
-        if ($admin) {
+        if ($actingUser) {
             Log::create([
-                'idUser' => $admin->id,
-                'user_nom' => $admin->last_name,
-                'user_prenom' => $admin->first_name,
-                'user_pseudo' => $admin->pseudo,
-                'user_role' => $admin->role,
-                'user_doc' => $admin->created_at,
+                'idUser' => $actingUser->id,
+                'user_nom' => $actingUser->last_name,
+                'user_prenom' => $actingUser->first_name,
+                'user_pseudo' => $actingUser->pseudo,
+                'user_role' => $actingUser->role,
+                'user_doc' => $actingUser->created_at,
                 'action' => 'create',
                 'table_concernee' => 'users',
                 'details' => "Nouvel utilisateur ajouté : {$user->last_name} {$user->first_name} (ID: {$user->id}, Role: {$user->role})",
@@ -67,14 +66,34 @@ class UserController extends Controller
     }
 
     // Récuperer tous les Users
-    function listeUser()
+    function listeUser(Request $request)
     {
-        // Retourne tous les produits sous forme de collection
-        $users = User::all();
-        // Retourne la collection d'utilisateurs
+        $query = User::query();
+
+        if ($request->filled('search')) {
+            $search = $request->query('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('pseudo', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('role')) {
+            $query->where('role', $request->query('role'));
+        }
+
+        $users = $query->latest()->paginate(15);
+
         return response()->json([
             'status' => 'success',
-            'users' => $users,
+            'users' => $users->items(),
+            'pagination' => [
+                'current_page' => $users->currentPage(),
+                'per_page' => $users->perPage(),
+                'total' => $users->total(),
+                'last_page' => $users->lastPage(),
+            ],
         ], 200);
     }
 
@@ -82,11 +101,10 @@ class UserController extends Controller
     public function deleteUser(Request $request, $id)
     {
         try {
-            $authUserId = $request->query('user_id'); // ID de l’utilisateur connecté
-            $authUser = User::find($authUserId);
+            $authUser = $request->user();
 
             if (!$authUser) {
-                return response()->json(['status' => 'Erreur : ID utilisateur invalide.'], 400);
+                return response()->json(['status' => 'Erreur : Utilisateur non authentifié.'], 401);
             }
 
             $user = User::find($id);
@@ -120,7 +138,49 @@ class UserController extends Controller
         }
     }
 
-    // M-à-j les données d'un user
+    // Fonction pour supprimer plusieurs utilisateurs simultanément (suppression groupée)
+    public function deleteUsersMultiple(Request $request)
+    {
+        try {
+            $request->validate([
+                'ids' => 'required|array',
+                'ids.*' => 'exists:users,id',
+            ]);
+
+            $authUser = $request->user();
+
+            $ids = array_filter($request->input('ids'), fn($id) => (int) $id !== (int) $authUser->id);
+            $deletedCount = User::whereIn('id', $ids)->delete();
+
+            if ($authUser && $deletedCount > 0) {
+                Log::create([
+                    'idUser' => $authUser->id,
+                    'user_nom' => $authUser->last_name,
+                    'user_prenom' => $authUser->first_name,
+                    'user_pseudo' => $authUser->pseudo,
+                    'user_role' => $authUser->role,
+                    'user_doc' => $authUser->created_at,
+                    'action' => 'delete',
+                    'table_concernee' => 'users',
+                    'details' => "Suppression groupée de {$deletedCount} utilisateur(s) (IDs: " . implode(', ', $ids) . ")",
+                    'created_at' => now(),
+                ]);
+            }
+
+            return response()->json([
+                'status' => 'deleted',
+                'count' => $deletedCount,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Une erreur est survenue lors de la suppression.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // Fonction pour mettre à jour les informations d'un user
     public function updateUser(Request $req, $id)
     {
         $req->validate([
@@ -135,10 +195,9 @@ class UserController extends Controller
             return response()->json(['error' => 'Utilisateur non trouvé.'], 404);
         }
 
-        $authUserId = $req->input('user_id');
-        $authUser = User::find($authUserId);
+        $authUser = $req->user();
         if (!$authUser) {
-            return response()->json(['error' => 'Utilisateur authentifié invalide.'], 400);
+            return response()->json(['error' => 'Utilisateur non authentifié.'], 401);
         }
 
         $oldData = $user->toArray();
@@ -157,7 +216,7 @@ class UserController extends Controller
         }
 
         if ($req->has('role')) {
-            if ($authUser->role !== 'super_admin') {
+            if ($authUser->role !== 'admin') {
                 return response()->json(['error' => 'Seul un super administrateur peut modifier le rôle.'], 403);
             }
             $user->role = $req->input('role');
