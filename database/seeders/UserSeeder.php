@@ -29,7 +29,7 @@ class UserSeeder extends Seeder
         // ]);
 
         // Liste de tous vos rôles uniques
-        $roles = ['gardien', 'reception', 'caisse_outils', 'caisse'];
+        $roles = ['gardien', 'reception', 'caisse_outils', 'caisse', 'admin'];
 
         // Boucle pour créer un seul utilisateur par rôle
         foreach ($roles as $role) {

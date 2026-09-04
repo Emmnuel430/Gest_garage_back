@@ -11,15 +11,14 @@ class Reception extends Model
 
     protected $fillable = [
         'vehicule_id',
-        'gardien_id',
-        'chef_atelier_id',
+        'created_by_id',
+        'validated_by_id',
+        'repaired_by_id',
         'date_arrivee',
         'motif_visite',
         'fiche_reception_vehicule',
-        'statut',
-        'secretaire_id'
+        'statut'
     ];
-
 
     protected static function booted()
     {
@@ -27,19 +26,46 @@ class Reception extends Model
             $reception->vehicule()->delete();
         });
     }
+
     public function vehicule()
     {
         return $this->belongsTo(Vehicule::class);
     }
 
+    public function creePar()
+    {
+        return $this->belongsTo(User::class, 'created_by_id');
+    }
+
+    public function validePar()
+    {
+        return $this->belongsTo(User::class, 'validated_by_id');
+    }
+
+    public function reparePar()
+    {
+        return $this->belongsTo(User::class, 'repaired_by_id');
+    }
+
+    // Alias rétrocompatibles
     public function gardien()
     {
-        return $this->belongsTo(User::class, 'gardien_id');
+        return $this->creePar();
+    }
+
+    public function user()
+    {
+        return $this->creePar();
     }
 
     public function secretaire()
     {
-        return $this->belongsTo(User::class, 'secretaire_id');
+        return $this->validePar();
+    }
+
+    public function chefAtelier()
+    {
+        return $this->reparePar();
     }
 
     public function checkReception()
@@ -65,5 +91,27 @@ class Reception extends Model
     public function facture()
     {
         return $this->hasOne(Facture::class);
+    }
+
+    public static function getAllowedTransitions(): array
+    {
+        return [
+            'attente' => ['validee', 'annulee'],
+            'validee' => ['en_cours', 'terminee', 'annulee'],
+            'en_cours' => ['terminee', 'annulee'],
+            'terminee' => ['cloturee', 'sortie'],
+            'annulee' => [],
+            'cloturee' => [],
+            'sortie' => [],
+        ];
+    }
+
+    public function canTransitionTo(string $newStatus): bool
+    {
+        if ($this->statut === $newStatus) {
+            return true;
+        }
+        $allowed = static::getAllowedTransitions()[$this->statut] ?? [];
+        return in_array($newStatus, $allowed, true);
     }
 }

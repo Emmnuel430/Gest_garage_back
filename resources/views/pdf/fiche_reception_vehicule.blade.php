@@ -110,8 +110,8 @@
     </tr>
     <tr>
       <td>
-        <strong>Enregistré par :</strong> {{ $reception->gardien->first_name
-  ?? '...' }} {{ $reception->gardien->last_name ?? '' }}
+        <strong>Enregistré par :</strong> {{ ($reception->creePar ?? $reception->gardien)->first_name
+  ?? '...' }} {{ ($reception->creePar ?? $reception->gardien)->last_name ?? '' }}
       </td>
     </tr>
     <tr>
@@ -123,7 +123,7 @@
     </tr>
     <tr>
       <td>
-        <strong>Numéro de téléphone :</strong> {{
+        <strong>Numéro de téléphone mecanicien :</strong> {{
   $reception->vehicule->mecanicien->contact ?? '...' }}
       </td>
     </tr>
@@ -163,24 +163,24 @@
     <tbody>
       @foreach($check->items as $item)
         @php
-        $valeur = $item->valeur;
-        $type = $item->item->type;
-        // Définir la classe couleur selon la valeur et le type
-        $class = '';
-        if ($type === 'presence') {
-        $class = ($valeur === 'présent') ? 'text-success' : (($valeur === 'absent') ? 'text-danger' : '');
-        } elseif ($type === 'etat') {
-        $class = ($valeur === 'bon') ? 'text-success' : (in_array($valeur, ['mauvais', 'absent']) ? 'text-danger' : '');
-        }
-      @endphp
+          $valeur = $item->valeur;
+          $type = $item->item->type;
+          // Définir la classe couleur selon la valeur et le type
+          $class = '';
+          if ($type === 'presence') {
+            $class = ($valeur === 'présent') ? 'text-success' : (($valeur === 'absent') ? 'text-danger' : '');
+          } elseif ($type === 'etat') {
+            $class = ($valeur === 'bon') ? 'text-success' : (in_array($valeur, ['mauvais', 'absent']) ? 'text-danger' : '');
+          }
+        @endphp
 
         <tr>
-        <td>{{ ucfirst($item->item->nom) }}</td>
-        <td class="{{ $class }}" style="font-weight: bold; text-align: center;">
-          {{ ucfirst($valeur) }}
-        </td>
+          <td>{{ ucfirst($item->item->nom) }}</td>
+          <td class="{{ $class }}" style="font-weight: bold; text-align: center;">
+            {{ ucfirst($valeur) }}
+          </td>
         </tr>
-    @endforeach
+      @endforeach
 
       <tr>
         <td colspan="2" style="height: 80px">

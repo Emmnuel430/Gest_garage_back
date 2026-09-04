@@ -16,7 +16,7 @@ return new class extends Migration {
         Schema::create('billets_sortie', function (Blueprint $table) {
             $table->id();
             $table->foreignId('reception_id')->constrained('receptions')->onDelete('cascade');
-            $table->foreignId('chef_atelier_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
 
             $table->timestamp('date_generation');
             $table->string('fiche_sortie_vehicule')->nullable();
