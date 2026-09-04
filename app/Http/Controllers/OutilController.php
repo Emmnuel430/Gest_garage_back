@@ -9,14 +9,38 @@ use App\Models\Log;
 
 class OutilController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Outil::all());
+        $query = Outil::query();
+
+        if ($request->filled('search')) {
+            $search = $request->query('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('libelle', 'like', "%{$search}%")
+                    ->orWhere('reference', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->has('page')) {
+            $outils = $query->latest()->paginate($request->query('per_page', 15));
+            return response()->json([
+                'status' => 'success',
+                'outils' => $outils->items(),
+                'pagination' => [
+                    'current_page' => $outils->currentPage(),
+                    'per_page' => $outils->perPage(),
+                    'total' => $outils->total(),
+                    'last_page' => $outils->lastPage(),
+                ],
+            ]);
+        }
+
+        return response()->json($query->latest()->get());
     }
 
     public function store(Request $request)
     {
-        $user = $request->user() ?: User::find($request->input('user_id'));
+        $user = $request->user();
         if (!$user || $user->role !== 'admin') {
             return response()->json(['error' => 'Non autorisé. Seul le Gérant peut gérer l\'inventaire.'], 403);
         }
@@ -29,7 +53,7 @@ class OutilController extends Controller
 
         $outil = Outil::create($validated);
 
-        $this->logAction($user, 'create', 'outils', "Ajout de l'outil: {$outil->libelle} (Réf: {$outil->reference}, Qté: {$outil->quantite})");
+        $this->logAction($user, 'add', 'outils', "Ajout de l'outil: {$outil->libelle} (Réf: {$outil->reference}, Qté: {$outil->quantite})");
 
         return response()->json([
             'message' => 'Outil ajouté avec succès.',
@@ -39,7 +63,7 @@ class OutilController extends Controller
 
     public function update(Request $request, $id)
     {
-        $user = $request->user() ?: User::find($request->input('user_id'));
+        $user = $request->user();
         if (!$user || $user->role !== 'admin') {
             return response()->json(['error' => 'Non autorisé. Seul le Gérant peut gérer l\'inventaire.'], 403);
         }
@@ -65,7 +89,7 @@ class OutilController extends Controller
 
     public function destroy(Request $request, $id)
     {
-        $user = $request->user() ?: User::find($request->input('user_id'));
+        $user = $request->user();
         if (!$user || $user->role !== 'admin') {
             return response()->json(['error' => 'Non autorisé. Seul le Gérant peut gérer l\'inventaire.'], 403);
         }

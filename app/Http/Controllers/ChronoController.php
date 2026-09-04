@@ -12,14 +12,13 @@ class ChronoController extends Controller
 {
     public function stopChrono(Request $request, $id)
     {
-        $userId = $request->input('user_id');
-        $authUser = User::find($userId);
+        $authUser = $request->user();
         // Récupération de l'utilisateur connecté
         $reception = Reception::find($id);
         $vehicule = $reception->vehicule;
 
         if (!$authUser) {
-            return response()->json(['message' => 'Utilisateur introuvable'], 404);
+            return response()->json(['message' => 'Non autorisé'], 401);
         }
 
 
@@ -63,13 +62,12 @@ class ChronoController extends Controller
 
     public function pauseChrono(Request $request, $id)
     {
-        $userId = $request->input('user_id');
-        $authUser = User::find($userId);
+        $authUser = $request->user();
         $reception = Reception::find($id);
         $vehicule = $reception->vehicule;
 
         if (!$authUser) {
-            return response()->json(['message' => 'Utilisateur introuvable'], 404);
+            return response()->json(['message' => 'Non autorisé'], 401);
         }
 
         $chrono = Chrono::where('reception_id', $id)->first();
@@ -83,6 +81,7 @@ class ChronoController extends Controller
         }
 
         $chrono->pause_time = now();
+        $chrono->statut = 'en_pause';
         $chrono->save();
 
         Log::create([
@@ -103,13 +102,12 @@ class ChronoController extends Controller
 
     public function resumeChrono(Request $request, $id)
     {
-        $userId = $request->input('user_id');
-        $authUser = User::find($userId);
+        $authUser = $request->user();
         $reception = Reception::find($id);
         $vehicule = $reception->vehicule;
 
         if (!$authUser) {
-            return response()->json(['message' => 'Utilisateur introuvable'], 404);
+            return response()->json(['message' => 'Non autorisé'], 401);
         }
 
         $chrono = Chrono::where('reception_id', $id)->first();
@@ -126,6 +124,7 @@ class ChronoController extends Controller
 
         $chrono->temps_total_pause += $pauseDuration;
         $chrono->pause_time = null;
+        $chrono->statut = 'en_cours';
         $chrono->resume_time = now();
         $chrono->save();
 
@@ -146,12 +145,44 @@ class ChronoController extends Controller
     }
 
 
-    public function listeChronos()
-    {
-        $chronos = Chrono::with('reception.vehicule')->get();
+    public function listeChronos(Request $request)
+{
+    // 1. Initialise la requête avec les relations imbriquées nécessaires
+    $query = Chrono::with('reception.vehicule');
 
-        return response()->json($chronos);
+    // 2. Filtre par recherche textuelle (recherche dans les relations imbriquées du véhicule)
+    if ($request->filled('search')) {
+        $search = $request->query('search');
+        
+        $query->whereHas('reception.vehicule', function ($q) use ($search) {
+            $q->where('immatriculation', 'like', "%{$search}%")
+              ->orWhere('marque', 'like', "%{$search}%")
+              ->orWhere('modele', 'like', "%{$search}%");
+        });
     }
+
+    // 4. Tri par date de création du chrono et pagination standardisée à 15 éléments
+    $chronos = $query->orderByDesc('created_at')->paginate(15);
+
+    $chronosEnCours = Chrono::with('reception.vehicule')
+        ->whereNull('end_time')
+        ->orderByDesc('created_at')
+        ->get();
+
+    // 5. Structure de réponse JSON identique pour faciliter l'intégration côté React
+    return response()->json([
+        'status' => 'success',
+        'chronos' => $chronos->items(),
+        'chronos_en_cours' => $chronosEnCours,
+        'pagination' => [
+            'current_page' => $chronos->currentPage(),
+            'per_page' => $chronos->perPage(),
+            'total' => $chronos->total(),
+            'last_page' => $chronos->lastPage(),
+        ],
+    ], 200);
+}
+
 
 
 }

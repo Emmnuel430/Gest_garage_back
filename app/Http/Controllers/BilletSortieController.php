@@ -14,16 +14,36 @@ use Illuminate\Support\Facades\DB;
 
 class BilletSortieController extends Controller
 {
-    public function listeBilletSortie()
+    public function listeBilletSortie(Request $request)
     {
-        $billetSortie = BilletSortie::with([
+        $query = BilletSortie::with([
             'reception.vehicule.mecanicien',
             'reception.chrono',
+            'user',
             'chefAtelier'
-        ])->get();
+        ]);
 
+        if ($request->filled('search')) {
+            $search = $request->query('search');
+            $query->whereHas('reception.vehicule', function ($q) use ($search) {
+                $q->where('immatriculation', 'like', "%{$search}%")
+                    ->orWhere('marque', 'like', "%{$search}%")
+                    ->orWhere('modele', 'like', "%{$search}%");
+            });
+        }
 
-        return response()->json($billetSortie);
+        $billetSortie = $query->latest()->paginate(15);
+
+        return response()->json([
+            'status' => 'success',
+            'billets_sortie' => $billetSortie->items(),
+            'pagination' => [
+                'current_page' => $billetSortie->currentPage(),
+                'per_page' => $billetSortie->perPage(),
+                'total' => $billetSortie->total(),
+                'last_page' => $billetSortie->lastPage(),
+            ],
+        ]);
     }
 
     public function genererBilletSortie(Request $request, $id)
@@ -33,7 +53,7 @@ class BilletSortieController extends Controller
         try {
             $reception = Reception::findOrFail($id);
             $vehicule = $reception->vehicule;
-            $chefAtelier = User::findOrFail($request->input('user_id'));
+            $user = $request->user();
 
             $reception->update([
                 'statut' => 'termine', // à adapter selon ton enum ou valeur
@@ -41,13 +61,14 @@ class BilletSortieController extends Controller
             // Création du billet
             $billet = BilletSortie::create([
                 'reception_id' => $reception->id,
-                'chef_atelier_id' => $chefAtelier->id,
+                'user_id' => $user->id,
                 'date_generation' => now(),
             ]);
 
             $pdf = PDF::loadView('pdf.fiche_sortie_vehicule', [
                 'reception' => $reception,
-                'chefAtelier' => $chefAtelier,
+                'user' => $user,
+                'chefAtelier' => $user,
                 'billetSortie' => $billet,
             ]);
 
@@ -59,12 +80,12 @@ class BilletSortieController extends Controller
 
             // Log
             Log::create([
-                'idUser' => $chefAtelier->id,
-                'user_nom' => $chefAtelier->last_name,
-                'user_prenom' => $chefAtelier->first_name,
-                'user_pseudo' => $chefAtelier->pseudo,
-                'user_role' => $chefAtelier->role,
-                'user_doc' => $chefAtelier->created_at,
+                'idUser' => $user->id,
+                'user_nom' => $user->last_name,
+                'user_prenom' => $user->first_name,
+                'user_pseudo' => $user->pseudo,
+                'user_role' => $user->role,
+                'user_doc' => $user->created_at,
                 'action' => 'create',
                 'table_concernee' => 'billets sortie',
                 'details' => "Billet de sortie généré pour le véhicule {$vehicule->immatriculation} (Réception ID : {$reception->id})",

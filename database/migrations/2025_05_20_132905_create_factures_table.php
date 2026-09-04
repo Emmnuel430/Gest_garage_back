@@ -16,7 +16,7 @@ return new class extends Migration {
         Schema::create('factures', function (Blueprint $table) {
             $table->id();
             $table->foreignId('reception_id')->constrained('receptions')->onDelete('cascade');
-            $table->foreignId('caissier_id')->nullable()->constrained('users')->onDelete('set null');
+            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
 
             $table->decimal('montant', 10, 2);
             $table->dateTime('date_generation')->nullable();

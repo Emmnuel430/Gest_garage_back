@@ -16,7 +16,7 @@ class Facture extends Model
         'statut',
         'recu',
         'date_paiement',
-        'caissier_id'
+        'user_id'
     ];
 
     public function reception()
@@ -24,8 +24,14 @@ class Facture extends Model
         return $this->belongsTo(Reception::class);
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    // Alias rétrocompatible
     public function caissier()
     {
-        return $this->belongsTo(User::class, 'caissier_id');
+        return $this->user();
     }
 }

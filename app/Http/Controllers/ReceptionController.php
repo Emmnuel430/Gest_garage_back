@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PretOutil;
 use Illuminate\Http\Request;
 use App\Models\Reception;
 use App\Models\Log;
@@ -25,6 +26,8 @@ class ReceptionController extends Controller
 {
     public function addReception(Request $request)
     {
+        $user = $request->user();
+
         $validatedVehicule = $request->validate([
             'immatriculation' => 'required|string|max:255',
             'marque' => 'required|string|max:255',
@@ -33,11 +36,10 @@ class ReceptionController extends Controller
         ]);
 
         $validatedReception = $request->validate([
-            'gardien_id' => 'required|exists:users,id',
             'motif_visite' => 'required|string|max:255',
         ]);
 
-        // Créer le véhicule (ou retrouver si déjà existant selon l'immatriculation)
+        // Créer le véhicule (ou le retrouver si déjà existant)
         $vehicule = Vehicule::firstOrCreate(
             ['immatriculation' => $validatedVehicule['immatriculation']],
             $validatedVehicule
@@ -55,36 +57,17 @@ class ReceptionController extends Controller
             ], 400);
         }
 
-        // Création de la réception
+        // Création de la réception (L'Observer intercepte la création ici et génère le PDF + Log)
         $reception = Reception::create([
             'vehicule_id' => $vehicule->id,
-            'gardien_id' => $validatedReception['gardien_id'],
+            'created_by_id' => $user->id,
             'motif_visite' => $validatedReception['motif_visite'],
-            'date_arrivee' => now(), // Automatique
+            'date_arrivee' => now(),
             'statut' => 'attente',
         ]);
 
-        // Génération du PDF de fiche d’entrée
-        $pdf = Pdf::loadView('pdf.fiche_entree_vehicule', compact('reception'));
-        $pdfPath = 'vehicules/fiche_entree_' . $vehicule->id . '.pdf';
-        Storage::disk('public')->put($pdfPath, $pdf->output());
-
-        $vehicule->update(['fiche_entree_vehicule' => $pdfPath]);
-
-        // Log de l'action
-        $gardien = User::find($validatedReception['gardien_id']);
-        Log::create([
-            'idUser' => $gardien->id,
-            'user_nom' => $gardien->last_name,
-            'user_prenom' => $gardien->first_name,
-            'user_pseudo' => $gardien->pseudo,
-            'user_role' => $gardien->role,
-            'user_doc' => $gardien->created_at,
-            'action' => 'add',
-            'table_concernee' => 'receptions',
-            'details' => "Réception créée pour le véhicule {$vehicule->immatriculation} (Réception ID : {$reception->id})",
-            'created_at' => now(),
-        ]);
+        // On rafraîchit l'instance du véhicule pour avoir le nouveau chemin du PDF mis à jour par l'Observer
+        $vehicule->refresh();
 
         return response()->json([
             'status' => 'success',
@@ -95,10 +78,9 @@ class ReceptionController extends Controller
     }
 
 
-
     public function getReception($id)
     {
-        $reception = Reception::with(['vehicule', 'gardien', 'secretaire'])->find($id);
+        $reception = Reception::with(['vehicule', 'creePar', 'validePar', 'reparePar'])->find($id);
         if (!$reception) {
             return response()->json(['error' => 'Réception non trouvée'], 404);
         }
@@ -109,34 +91,53 @@ class ReceptionController extends Controller
         ], 200);
     }
 
-    public function listeReception()
+    public function listeReception(Request $request)
     {
-        $receptions = Reception::with([
+        $query = Reception::with([
             'vehicule.mecanicien',
-            'gardien',
-            'secretaire',
+            'creePar',
+            'validePar',
+            'reparePar',
             'checkReception',
             'chrono',
-            /*             'reparation',
-                        'billetSortie',
-                        'facture' */
-        ])->orderByDesc('created_at')->get();
+        ]);
+
+        if ($request->filled('search')) {
+            $search = $request->query('search');
+            $query->whereHas('vehicule', function ($q) use ($search) {
+                $q->where('immatriculation', 'like', "%{$search}%")
+                    ->orWhere('marque', 'like', "%{$search}%")
+                    ->orWhere('modele', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('statut')) {
+            $query->where('statut', $request->query('statut'));
+        }
+
+        $receptions = $query->orderByDesc('created_at')->paginate(15);
 
         return response()->json([
             'status' => 'success',
-            'receptions' => $receptions,
+            'receptions' => $receptions->items(),
+            'pagination' => [
+                'current_page' => $receptions->currentPage(),
+                'per_page' => $receptions->perPage(),
+                'total' => $receptions->total(),
+                'last_page' => $receptions->lastPage(),
+            ],
         ], 200);
     }
 
     public function updateReception(Request $req, $id)
     {
+        $user = $req->user();
+
         $req->validate([
             'vehicule_id' => 'required|exists:vehicules,id',
-            'gardien_id' => 'required|exists:users,id',
             'date_arrivee' => 'required|date',
             'motif_visite' => 'required|string|max:255',
             'statut' => 'nullable|string',
-            'user_id' => 'required|exists:users,id',
         ]);
 
         $reception = Reception::find($id);
@@ -144,12 +145,17 @@ class ReceptionController extends Controller
             return response()->json(['error' => 'Réception non trouvée.'], 404);
         }
 
-        $authUser = User::find($req->user_id);
+        if ($req->filled('statut') && !$reception->canTransitionTo($req->statut)) {
+            return response()->json([
+                'error' => "Transition de statut interdite : de '{$reception->statut}' vers '{$req->statut}'."
+            ], 422);
+        }
+
+        $authUser = $user;
         $oldData = $reception->toArray();
 
         $reception->update($req->only([
             'vehicule_id',
-            'gardien_id',
             'date_arrivee',
             'motif_visite',
             'statut'
@@ -190,8 +196,7 @@ class ReceptionController extends Controller
     public function deleteReception(Request $request, $id)
     {
         try {
-            $userId = $request->query('user_id');
-            $authUser = User::find($userId);
+            $authUser = $request->user();
 
             if (!$authUser) {
                 return response()->json(['status' => 'Utilisateur invalide.'], 400);
@@ -235,19 +240,24 @@ class ReceptionController extends Controller
     {
         $reception = Reception::findOrFail($id);
 
+        if (!$reception->canTransitionTo('validee')) {
+            return response()->json([
+                'message' => "Impossible de valider cette réception : transition interdite depuis '{$reception->statut}'."
+            ], 422);
+        }
+
         DB::beginTransaction();
 
         try {
 
-            $userId = $request->input('user_id');
-            $authUser = User::findOrFail($userId);
+            $authUser = $request->user();
 
             $vehicule = $reception->vehicule;
 
             // 1. Valider la réception
             $reception->update([
                 'statut' => 'validee',
-                'secretaire_id' => $authUser->id,
+                'validated_by_id' => $authUser->id,
             ]);
 
             // 2. Créer le check_reception
@@ -338,68 +348,92 @@ class ReceptionController extends Controller
 
     public function terminerReparation(Request $request, $id)
     {
-        DB::beginTransaction();
+        $user = $request->user();
 
         try {
-            $reception = Reception::findOrFail($id);
-            $userId = $request->input('user_id');
-            $chefAtelier = User::findOrFail($userId);
-            $vehicule = $reception->vehicule;
+            // 1. Récupérer la réception et la réparation
+            $reception = Reception::with('vehicule')->findOrFail($id);
 
-            $reparation = Reparation::where('reception_id', $reception->id)->firstOrFail();
+            $reparation = Reparation::where('reception_id', $reception->id)
+                ->firstOrFail();
 
-            // Check if there are tools still on loan (prete) for this repair
-            $unreturnedTools = \App\Models\PretOutil::where('reparation_id', $reparation->id)
+            // 2. Vérifier que la réparation n'est pas déjà terminée
+            if ($reparation->statut === 'termine') {
+                return response()->json([
+                    'message' => 'Cette réparation est déjà terminée.',
+                    'toast' => 'warning'
+                ], 400);
+            }
+
+            // 3. Vérifier que tous les outils ont été restitués
+            $unreturnedTools = PretOutil::where('reparation_id', $reparation->id)
                 ->where('statut', 'prete')
                 ->exists();
 
             if ($unreturnedTools) {
-                return response()->json(['message' => 'Impossible de terminer la réparation : tous les outils prêtés ne sont pas restitués.'], 400);
+                return response()->json([
+                    'message' => 'Impossible de terminer la réparation : tous les outils prêtés doivent être restitués.',
+                    'toast' => 'warning'
+                ], 422);
             }
 
-            $reception->update([
-                'chef_atelier_id' => $chefAtelier->id,
-            ]);
-            // 1. Terminer la reparation
+            // 4. Transaction uniquement pour les modifications
+            DB::beginTransaction();
+
+            // 5. Marquer la réparation comme terminée
             $reparation->update([
-                'chef_atelier_id' => $userId,
-                'statut' => 'termine'
+                'user_id' => $user->id,
+                'statut' => 'termine',
             ]);
 
-
-            // 2. Création d'une facture "en attente"
-            $facture = Facture::create([
-                'reception_id' => $reception->id,
-                'montant' => 0,
-                'date_generation' => null,
-                'statut' => 'en_attente',
-                'recu' => null,
-                'caissier_id' => null,
+            // 6. Enregistrer qui a terminé les travaux
+            $reception->update([
+                'repaired_by_id' => $user->id,
             ]);
 
-            // Log de l'action
+            // 7. Créer la facture uniquement si elle n'existe pas déjà
+            $facture = Facture::firstOrCreate(
+                [
+                    'reception_id' => $reception->id,
+                ],
+                [
+                    'montant' => 0,
+                    'date_generation' => null,
+                    'statut' => 'en_attente',
+                    'recu' => null,
+                    'user_id' => null,
+                ]
+            );
+
+            // 8. Log
             Log::create([
-                'idUser' => $chefAtelier->id,
-                'user_nom' => $chefAtelier->last_name,
-                'user_prenom' => $chefAtelier->first_name,
-                'user_pseudo' => $chefAtelier->pseudo,
-                'user_role' => $chefAtelier->role,
-                'user_doc' => $chefAtelier->created_at,
+                'idUser' => $user->id,
+                'user_nom' => $user->last_name,
+                'user_prenom' => $user->first_name,
+                'user_pseudo' => $user->pseudo,
+                'user_role' => $user->role,
+                'user_doc' => $user->created_at,
                 'action' => 'update',
                 'table_concernee' => 'reparations',
-                'details' => "Réparation terminée pour le véhicule {$vehicule->immatriculation} (Réception ID : {$reception->id}).",
+                'details' => "Réparation terminée pour le véhicule {$reception->vehicule->immatriculation} (Réception ID : {$reception->id}).",
             ]);
 
             DB::commit();
 
             return response()->json([
-                'message' => "Réparation terminée !",
-                'facture' => $facture
+                'message' => 'Réparation terminée avec succès.',
+                'facture' => $facture,
+                'toast' => 'success',
             ]);
 
         } catch (\Exception $e) {
+
             DB::rollBack();
-            return response()->json(['message' => 'Erreur : ' . $e->getMessage()], 500);
+
+            return response()->json([
+                'message' => 'Erreur lors de la terminaison de la réparation : ' . $e->getMessage(),
+                'toast' => 'danger',
+            ], 500);
         }
     }
 
