@@ -32,12 +32,19 @@ class AppServiceProvider extends ServiceProvider
         Mecanicien::observe(MecanicienObserver::class);
         Reception::observe(ReceptionObserver::class);
         // ---------
-        // Définir l'autorisation globale pour la caisse à outils
+        // Définir l'autorisation globale pour la caisse à outils (support kebab-case et snake_case)
         Gate::define('gerer-outils', function (User $user) {
             return in_array($user->role, ['admin', 'caisse_outils']);
         });
+        Gate::define('gerer_outils', function (User $user) {
+            return in_array($user->role, ['admin', 'caisse_outils']);
+        });
 
+        // Définir l'autorisation pour terminer une réparation (support kebab-case et snake_case)
         Gate::define('terminer-reparation', function (User $user) {
+            return in_array($user->role, ['admin', 'reception']);
+        });
+        Gate::define('terminer_reparation', function (User $user) {
             return in_array($user->role, ['admin', 'reception']);
         });
         // --------
