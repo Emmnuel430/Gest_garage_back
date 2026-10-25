@@ -11,6 +11,8 @@ use App\Models\User;
 use App\Models\Mecanicien;
 use App\Models\Log;
 use Illuminate\Support\Facades\DB;
+use App\Services\NotificationDispatcher;
+use App\Notifications\GarageAlertNotification;
 
 class PretOutilController extends Controller
 {
@@ -174,6 +176,31 @@ class PretOutilController extends Controller
 
             DB::commit();
 
+            // E8: Notification Prêt d'Outil -> caisse_outils, admin
+            NotificationDispatcher::sendToRoles(
+                ['caisse_outils', 'admin'],
+                new GarageAlertNotification(
+                    title: "Prêt d'Outil",
+                    message: "Outil '{$outil->libelle}' prêté à {$mecanicien->prenom} {$mecanicien->nom} pour le véhicule {$vehicule->immatriculation}.",
+                    type: 'info',
+                    actionUrl: '/outils'
+                )
+            );
+
+            // E11: Alerte Stock Critique (<= 1) -> caisse_outils, admin
+            $currentStock = $outil->fresh()->quantite;
+            if ($currentStock <= 1) {
+                NotificationDispatcher::sendToRoles(
+                    ['caisse_outils', 'admin'],
+                    new GarageAlertNotification(
+                        title: 'Stock Outil Critique',
+                        message: "Attention : Stock critique pour l'outil '{$outil->libelle}' ({$currentStock} restant(s)).",
+                        type: 'danger',
+                        actionUrl: '/outils'
+                    )
+                );
+            }
+
             return response()->json([
                 'message' => 'Outil prêté avec succès' . ($sharedCount > 0 ? " et partagé sur {$sharedCount} autre(s) véhicule(s)." : "."),
                 'pret' => $pret->load('outil', 'reparation.reception.vehicule', 'mecanicien')
@@ -242,6 +269,18 @@ class PretOutilController extends Controller
             );
 
             DB::commit();
+
+            // E9: Notification Restitution d'Outil -> caisse_outils, admin
+            $mecanicienInfo = $pret->mecanicien ? "{$pret->mecanicien->prenom} {$pret->mecanicien->nom}" : "le mécanicien";
+            NotificationDispatcher::sendToRoles(
+                ['caisse_outils', 'admin'],
+                new GarageAlertNotification(
+                    title: "Restitution d'Outil",
+                    message: "Outil '{$pret->outil->libelle}' restitué par {$mecanicienInfo}. Stock réintégré.",
+                    type: 'success',
+                    actionUrl: '/outils'
+                )
+            );
 
             return response()->json([
                 'message' => 'Outil restitué avec succès.',

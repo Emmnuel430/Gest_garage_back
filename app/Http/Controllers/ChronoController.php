@@ -7,6 +7,8 @@ use App\Models\Log;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Carbon\Carbon;
+use App\Services\NotificationDispatcher;
+use App\Notifications\GarageAlertNotification;
 
 class ChronoController extends Controller
 {
@@ -97,6 +99,17 @@ class ChronoController extends Controller
             'created_at' => now(),
         ]);
 
+        // E3: Notification Chrono en Pause -> admin, reception
+        NotificationDispatcher::sendToRoles(
+            ['admin', 'reception'],
+            new GarageAlertNotification(
+                title: 'Chrono en Pause',
+                message: "Chrono en pause pour le véhicule {$vehicule->immatriculation}.",
+                type: 'warning',
+                actionUrl: '/chronos'
+            )
+        );
+
         return response()->json(['message' => 'Chrono mis en pause.']);
     }
 
@@ -140,6 +153,17 @@ class ChronoController extends Controller
             'details' => "Chrono repris pour le véhicule {$vehicule->immatriculation} (Réception ID : {$reception->id}) après {$pauseDuration} min de pause.",
             'created_at' => now(),
         ]);
+
+        // E4: Notification Chrono Repris -> admin, reception
+        NotificationDispatcher::sendToRoles(
+            ['admin', 'reception'],
+            new GarageAlertNotification(
+                title: 'Chrono Repris',
+                message: "Reprise des travaux sur {$vehicule->immatriculation} après {$pauseDuration} min de pause.",
+                type: 'info',
+                actionUrl: '/chronos'
+            )
+        );
 
         return response()->json(['message' => 'Chrono repris.']);
     }

@@ -36,6 +36,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('gerer-outils', function (User $user) {
             return in_array($user->role, ['admin', 'caisse_outils']);
         });
+
+        Gate::define('terminer-reparation', function (User $user) {
+            return in_array($user->role, ['admin', 'reception']);
+        });
         // --------
     }
 }

@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
+use App\Services\NotificationDispatcher;
+use App\Notifications\GarageAlertNotification;
 
 
 
@@ -68,6 +70,19 @@ class ReceptionController extends Controller
 
         // On rafraîchit l'instance du véhicule pour avoir le nouveau chemin du PDF mis à jour par l'Observer
         $vehicule->refresh();
+        $vehicule->load('mecanicien');
+        $mecanicienNom = $vehicule->mecanicien ? "{$vehicule->mecanicien->prenom} {$vehicule->mecanicien->nom}" : "un mécanicien";
+
+        // E1: Notification Nouvelle Réception -> admin, caisse_outils, reception
+        NotificationDispatcher::sendToRoles(
+            ['admin', 'caisse_outils', 'reception'],
+            new GarageAlertNotification(
+                title: 'Nouvelle Réception',
+                message: "Nouveau véhicule réceptionné : {$vehicule->immatriculation} ({$vehicule->marque} {$vehicule->modele}). Assigné à {$mecanicienNom}.",
+                type: 'info',
+                actionUrl: '/receptions'
+            )
+        );
 
         return response()->json([
             'status' => 'success',
@@ -334,6 +349,17 @@ class ReceptionController extends Controller
 
             DB::commit();
 
+            // E2: Notification Mise en Réparation -> caisse_outils, admin
+            NotificationDispatcher::sendToRoles(
+                ['caisse_outils', 'admin'],
+                new GarageAlertNotification(
+                    title: 'Mise en Réparation',
+                    message: "Réparation lancée pour {$vehicule->immatriculation}. Chrono de travail démarré.",
+                    type: 'primary',
+                    actionUrl: '/reparations'
+                )
+            );
+
             return response()->json([
                 'message' => 'Réception validée, check effectué, chrono démarré et fiche générée.',
                 'reception' => $reception,
@@ -349,6 +375,12 @@ class ReceptionController extends Controller
     public function terminerReparation(Request $request, $id)
     {
         $user = $request->user();
+
+        if (!$user || $user->cannot('terminer_reparation')) {
+            return response()->json([
+                'message' => "Vous ne pouvez pas terminer cette réparation."
+            ], 403);
+        }
 
         try {
             // 1. Récupérer la réception et la réparation
@@ -419,6 +451,17 @@ class ReceptionController extends Controller
             ]);
 
             DB::commit();
+
+            // E5: Notification Réparation Terminée -> caisse, admin
+            NotificationDispatcher::sendToRoles(
+                ['caisse', 'admin'],
+                new GarageAlertNotification(
+                    title: 'Réparation Terminée',
+                    message: "Travaux terminés sur le véhicule {$reception->vehicule->immatriculation}. Facture en attente d'encaissement.",
+                    type: 'success',
+                    actionUrl: '/factures'
+                )
+            );
 
             return response()->json([
                 'message' => 'Réparation terminée avec succès.',
