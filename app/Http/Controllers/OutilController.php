@@ -49,11 +49,17 @@ class OutilController extends Controller
             'libelle' => 'required|string|max:255',
             'quantite' => 'required|integer|min:0',
             'reference' => 'required|string|unique:outils,reference',
+            'est_special' => 'nullable|boolean',
+            'prix_par_heure' => 'nullable|integer|min:0',
         ]);
+
+        $validated['est_special'] = (bool) ($validated['est_special'] ?? false);
+        $validated['prix_par_heure'] = $validated['est_special'] ? ((int) ($validated['prix_par_heure'] ?? 0)) : 0;
 
         $outil = Outil::create($validated);
 
-        $this->logAction($user, 'add', 'outils', "Ajout de l'outil: {$outil->libelle} (Réf: {$outil->reference}, Qté: {$outil->quantite})");
+        $specialDetail = $outil->est_special ? " [Spécial: {$outil->prix_par_heure} FCFA/h]" : "";
+        $this->logAction($user, 'add', 'outils', "Ajout de l'outil: {$outil->libelle} (Réf: {$outil->reference}, Qté: {$outil->quantite}){$specialDetail}");
 
         return response()->json([
             'message' => 'Outil ajouté avec succès.',
@@ -74,12 +80,20 @@ class OutilController extends Controller
             'libelle' => 'required|string|max:255',
             'quantite' => 'required|integer|min:0',
             'reference' => 'required|string|unique:outils,reference,' . $id,
+            'est_special' => 'nullable|boolean',
+            'prix_par_heure' => 'nullable|integer|min:0',
         ]);
+
+        if (array_key_exists('est_special', $validated)) {
+            $validated['est_special'] = (bool) $validated['est_special'];
+            $validated['prix_par_heure'] = $validated['est_special'] ? ((int) ($validated['prix_par_heure'] ?? 0)) : 0;
+        }
 
         $oldQuantite = $outil->quantite;
         $outil->update($validated);
 
-        $this->logAction($user, 'update', 'outils', "Modification de l'outil ID {$outil->id}: {$outil->libelle} (Qté: {$oldQuantite} -> {$outil->quantite})");
+        $specialDetail = $outil->est_special ? " [Spécial: {$outil->prix_par_heure} FCFA/h]" : "";
+        $this->logAction($user, 'update', 'outils', "Modification de l'outil ID {$outil->id}: {$outil->libelle} (Qté: {$oldQuantite} -> {$outil->quantite}){$specialDetail}");
 
         return response()->json([
             'message' => 'Outil mis à jour avec succès.',

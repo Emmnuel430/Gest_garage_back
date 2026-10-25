@@ -1,66 +1,92 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Backend - Gestion de Garage
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Application backend Laravel 11 pour la gestion operationnelle, financiere et logistique d'un garage automobile.
 
-## About Laravel
+## Prerequis
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP 8.2+
+- Composer
+- MySQL 8.0+
+- Extension PHP : PDO, OpenSSL, Mbstring, Tokenizer, XML, Ctype, JSON, BCMath, cURL
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Installation
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan storage:link
+```
 
-## Learning Laravel
+## Fonctionnalites Cles
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 1. Cycle de reparation et chronometrage
+- Reception d'un vehicule (`ReceptionController`).
+- Fiche de controle / etat des lieux (`CheckReceptionController`).
+- Lancement de la reparation avec chrono dedie par vehicule (`ChronoController`).
+- Enregistrement des pauses et calcul deterministe des heures nettes facturees.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+### 2. Outils et Magasin d'outillage
+- Gestion de l'inventaire des outils (`OutilController`).
+- **Outils speciaux :**
+  - Champs `est_special` (booleen) et `prix_par_heure` (montant en FCFA).
+  - Facturation a l'heure selon la duree nette du chrono du vehicule (`ceil(duree_minutes / 60)`).
+  - Facturation strictement attribuee par vehicule : si un mecanicien utilise le meme outil pour plusieurs vehicules distincts, chaque reparation enregistre son pret et calcule sa part independamment selon son chrono propre.
+- Prets et retours d'outils affectes aux reparations (`PretOutilController`).
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 3. Facturation et Sortie
+- **Suppression du prix fixe d'entree :** Le montant fixe d'entree (prise en charge) a ete integralement retire du systeme de calcul et des parametres.
+- **Grille tarifaire :** Seuls subsistent le tarif horaire de base (`tarif_horaire`) et le tarif des jours supplementaires (`tarif_jours_supp`).
+- Les outils speciaux utilises figurent de maniere detaillee sur le recu de caisse PDF (libelle, reference, tarif horaire, duree chrono et montant total).
+- Emission de factures et generation PDF securisee via DomPDF (`FactureController`).
+- Generation et verification du billet de sortie (`BilletSortieController`).
 
-## Laravel Sponsors
+### 4. Temps Reel et Notifications
+- Diffusion temps reel via Laravel Reverb (`NotificationDispatcher`).
+- Notifications stockees de facon persistante en base MySQL (`notifications`) et poussees via WebSocket sur les canaux prives `private-user.{id}`.
+- Envoi non bloquant encadre par `try/catch` pour garantir la resilience des transactions HTTP et SQL.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+## Configuration des Variables d'Environnement
 
-### Premium Partners
+```env
+APP_NAME="Gestion de Garage"
+APP_ENV=local
+APP_KEY=...
+APP_DEBUG=true
+APP_URL=http://localhost:8000
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=garage_db
+DB_USERNAME=root
+DB_PASSWORD=
 
-## Contributing
+BROADCAST_CONNECTION=reverb
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+REVERB_APP_ID=...
+REVERB_APP_KEY=...
+REVERB_APP_SECRET=...
+REVERB_HOST="127.0.0.1"
+REVERB_PORT=8080
+REVERB_SCHEME=http
+```
 
-## Code of Conduct
+## Batterie de Tests Backend
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Une suite de tests automatises (Feature tests) valide l'integrite du calcul de facturation, les outils speciaux et les parametres :
 
-## Security Vulnerabilities
+```bash
+# Executer l'ensemble des tests
+php artisan test
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# Executer specifiquement les tests de facturation des outils speciaux
+php vendor/phpunit/phpunit/phpunit tests/Feature/FacturationOutilsSpeciauxTest.php
+```
 
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Scenarios couverts :
+1. Verification de l'absence de `prix_entree` dans les parametres et tarifs.
+2. Creation et mise a jour d'un outil avec `est_special` et `prix_par_heure`.
+3. Calcul de facturation au chrono avec outil special et verification de l'absence de prise en charge sur la facture et le recu PDF.
+4. Facturation distincte par vehicule lorsqu'un outil special est partage entre mecaniciens / reparations avec chronos differents.

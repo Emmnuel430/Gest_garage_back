@@ -169,17 +169,6 @@
             </tr>
         </thead>
         <tbody>
-            <!-- Prise en charge initiale -->
-            <tr>
-                <td style="padding: 10px; border: 1px solid #ddd; text-align: left">
-                    Prise en charge initiale (Entrée véhicule)
-                </td>
-                <td style="padding: 10px; border: 1px solid #ddd; text-align: right">-</td>
-                <td style="padding: 10px; border: 1px solid #ddd; text-align: right">-</td>
-                <td style="padding: 10px; border: 1px solid #ddd; text-align: right">
-                    {{ number_format($priseEnCharge ?? 5000, 0, ',', ' ') }} FCFA
-                </td>
-            </tr>
             <!-- Main d'œuvre -->
             <tr>
                 <td style="padding: 10px; border: 1px solid #ddd; text-align: left">
@@ -197,6 +186,28 @@
                     {{ number_format(($nbHeures ?? 0) * $montantHoraire, 0, ',', ' ') }} FCFA
                 </td>
             </tr>
+            <!-- Outils spéciaux -->
+            @if(!empty($outilsSpeciaux))
+                @foreach($outilsSpeciaux as $item)
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd; text-align: left">
+                            Outil spécial : {{ $item['libelle'] }} (Réf: {{ $item['reference'] }})
+                            @if(($item['quantite'] ?? 1) > 1)
+                                - Qté : {{ $item['quantite'] }}
+                            @endif
+                        </td>
+                        <td style="padding: 10px; border: 1px solid #ddd; text-align: right">
+                            {{ $item['nb_heures'] }} h
+                        </td>
+                        <td style="padding: 10px; border: 1px solid #ddd; text-align: right">
+                            {{ number_format($item['prix_par_heure'], 0, ',', ' ') }} FCFA/h
+                        </td>
+                        <td style="padding: 10px; border: 1px solid #ddd; text-align: right">
+                            {{ number_format($item['montant'], 0, ',', ' ') }} FCFA
+                        </td>
+                    </tr>
+                @endforeach
+            @endif
             <!-- Surcharge J+1 -->
             @if(($joursSup ?? 0) > 0)
                 <tr>

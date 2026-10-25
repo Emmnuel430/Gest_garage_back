@@ -26,4 +26,9 @@ class Reparation extends Model
     {
         return $this->user();
     }
+
+    public function prets()
+    {
+        return $this->hasMany(PretOutil::class);
+    }
 }
