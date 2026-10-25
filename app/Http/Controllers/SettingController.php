@@ -12,7 +12,6 @@ class SettingController extends Controller
     {
         return response()->json([
             'tarif_horaire' => (int) Setting::get('tarif_horaire', 1000),
-            'prix_entree' => (int) Setting::get('prix_entree', 5000),
             'tarif_jours_supp' => (int) Setting::get('tarif_jours_supp', 2000),
         ]);
     }
@@ -21,16 +20,11 @@ class SettingController extends Controller
     {
         $request->validate([
             'tarif_horaire' => 'nullable|integer|min:0',
-            'prix_entree' => 'nullable|integer|min:0',
             'tarif_jours_supp' => 'nullable|integer|min:0',
         ]);
 
         if ($request->has('tarif_horaire')) {
             Setting::set('tarif_horaire', $request->tarif_horaire);
-        }
-
-        if ($request->has('prix_entree')) {
-            Setting::set('prix_entree', $request->prix_entree);
         }
 
         if ($request->has('tarif_jours_supp')) {
@@ -48,7 +42,7 @@ class SettingController extends Controller
                 'user_doc' => $user->created_at,
                 'action' => 'update',
                 'table_concernee' => 'settings',
-                'details' => "Mise à jour des tarifs (Horaire: {$request->tarif_horaire}, Entrée: {$request->prix_entree}, Jours supp: {$request->tarif_jours_supp})",
+                'details' => "Mise à jour des tarifs (Horaire: {$request->tarif_horaire}, Jours supp: {$request->tarif_jours_supp})",
             ]);
         }
 

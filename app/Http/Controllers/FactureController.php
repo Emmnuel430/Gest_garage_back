@@ -9,6 +9,7 @@ use App\Models\Log;
 use App\Models\Reception;
 use App\Models\Chrono;
 use App\Models\Setting;
+use App\Models\PretOutil;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -97,15 +98,46 @@ class FactureController extends Controller
 
             // 2. Calcul du montant
             $tarifHoraire = (int) Setting::get('tarif_horaire', 1000);
+            $tarifJournalier = (int) Setting::get('tarif_jours_supp', 2000);
             $nbHeures = ceil($durationNet / 60);
             $coutHoraire = $nbHeures * $tarifHoraire;
 
             $durationDays = $durationNet / 1440;
             $joursSup = $durationDays > 1 ? (int) ceil($durationDays - 1) : 0;
-            $coutJournalier = $joursSup * 2000;
+            $coutJournalier = $joursSup * $tarifJournalier;
 
-            $priseEnCharge = 5000;
-            $montant = $priseEnCharge + $coutHoraire + $coutJournalier;
+            // Calcul des outils spéciaux utilisés pour ce véhicule (facturés par heure selon le chrono du véhicule)
+            $outilsSpeciaux = [];
+            $totalOutilsSpeciaux = 0;
+
+            if ($reception->reparation) {
+                $prets = PretOutil::where('reparation_id', $reception->reparation->id)
+                    ->with('outil')
+                    ->get();
+
+                $groupedPrets = $prets->filter(function ($pret) {
+                    return $pret->outil && $pret->outil->est_special && $pret->outil->prix_par_heure > 0;
+                })->groupBy('outil_id');
+
+                foreach ($groupedPrets as $outilId => $pretsGroup) {
+                    $firstPret = $pretsGroup->first();
+                    $outil = $firstPret->outil;
+                    $qte = $pretsGroup->sum(fn($p) => (int) ($p->quantite_pretee ?? $p->quantite ?? 1));
+                    $montantLigne = $nbHeures * $outil->prix_par_heure * $qte;
+                    $totalOutilsSpeciaux += $montantLigne;
+                    $outilsSpeciaux[] = [
+                        'libelle' => $outil->libelle,
+                        'reference' => $outil->reference,
+                        'quantite' => $qte,
+                        'prix_par_heure' => $outil->prix_par_heure,
+                        'nb_heures' => $nbHeures,
+                        'montant' => $montantLigne,
+                    ];
+                }
+            }
+
+            // Facturation sans prix fixe d'entrée : uniquement horaire + jours supp + outils spéciaux
+            $montant = $coutHoraire + $coutJournalier + $totalOutilsSpeciaux;
 
             // 3. Mise à jour de la facture
             $facture->update([
@@ -122,9 +154,10 @@ class FactureController extends Controller
                 'montantHoraire' => $tarifHoraire,
                 'montantTotal' => $montant,
                 'nbHeures' => $nbHeures,
-                'priseEnCharge' => $priseEnCharge,
                 'joursSup' => $joursSup,
-                'tarifJournalier' => 2000,
+                'tarifJournalier' => $tarifJournalier,
+                'outilsSpeciaux' => $outilsSpeciaux,
+                'totalOutilsSpeciaux' => $totalOutilsSpeciaux,
             ]);
 
             $recuName = 'recu_caisse_' . $reception->id . '.pdf';
