@@ -13,6 +13,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Services\NotificationDispatcher;
+use App\Notifications\GarageAlertNotification;
 
 class FactureController extends Controller
 {
@@ -149,6 +151,18 @@ class FactureController extends Controller
 
             DB::commit();
 
+            // E6: Notification Facture Générée -> admin seulement
+            $formattedMontant = number_format($montant, 0, ',', ' ');
+            NotificationDispatcher::sendToRoles(
+                ['admin'],
+                new GarageAlertNotification(
+                    title: 'Facture Générée',
+                    message: "Facture #{$facture->id} générée pour {$vehicule->immatriculation} — Montant : {$formattedMontant} FCFA.",
+                    type: 'info',
+                    actionUrl: '/factures'
+                )
+            );
+
             return response()->json([
                 'message' => 'Facture générée, chrono arrêté !',
                 'facture' => $facture,
@@ -196,6 +210,19 @@ class FactureController extends Controller
             'details' => "Paiement validé pour la facture ID {$facture->id} (Montant : {$facture->montant} FCFA) " . ($vehicule ? " - Véhicule : {$vehicule->immatriculation}" : ''),
             'created_at' => now(),
         ]);
+
+        // E7: Notification Paiement Encaissé -> admin seulement
+        $formattedMontantPaye = number_format($facture->montant, 0, ',', ' ');
+        $immatInfo = $vehicule ? " ({$vehicule->immatriculation})" : "";
+        NotificationDispatcher::sendToRoles(
+            ['admin'],
+            new GarageAlertNotification(
+                title: 'Paiement Encaissé',
+                message: "Paiement de {$formattedMontantPaye} FCFA validé pour la facture #{$facture->id}{$immatInfo}.",
+                type: 'success',
+                actionUrl: '/factures'
+            )
+        );
 
         return response()->json([
             'message' => 'Paiement validé avec succès.'

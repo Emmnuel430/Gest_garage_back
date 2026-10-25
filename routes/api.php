@@ -16,6 +16,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\OutilController;
 use App\Http\Controllers\PretOutilController;
+use App\Http\Controllers\NotificationController;
 Route::middleware('auth:sanctum')->get('/user', fn(Request $request) => response()->json(['user' => $request->user()]));
 
 // Définit une route POST pour l'endpoint '/login'.
@@ -204,6 +205,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/prete_outil', [PretOutilController::class, 'preteOutil']);
     Route::post('/restitue_outil/{id}', [PretOutilController::class, 'restitueOutil']);
     Route::match(['put', 'post'], '/update_pret/{id}', [PretOutilController::class, 'updatePret']);
+
+    // -----------------------------------------------
+    // -----------------   Notifications   -----------
+    // -----------------------------------------------
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
 });
 
 

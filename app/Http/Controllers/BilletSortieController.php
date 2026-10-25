@@ -11,6 +11,8 @@ use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use App\Services\NotificationDispatcher;
+use App\Notifications\GarageAlertNotification;
 
 class BilletSortieController extends Controller
 {
@@ -92,6 +94,17 @@ class BilletSortieController extends Controller
             ]);
 
             DB::commit();
+
+            // E10: Notification Billet de sortie généré -> gardien, admin
+            NotificationDispatcher::sendToRoles(
+                ['gardien', 'admin'],
+                new GarageAlertNotification(
+                    title: 'Sortie Autorisée',
+                    message: "Billet de sortie délivré pour {$vehicule->immatriculation}. Sortie du garage autorisée.",
+                    type: 'success',
+                    actionUrl: '/billets_sortie'
+                )
+            );
 
             return response()->json([
                 'message' => 'Billet de sortie généré !',

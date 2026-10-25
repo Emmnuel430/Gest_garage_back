@@ -27,4 +27,13 @@ class User extends Authenticatable
     {
         return $this->hasOne(Mecanicien::class);
     }
+
+    /**
+     * Canal personnalisé pour la diffusion des notifications de l'utilisateur.
+     * Permet d'écouter 'user.{id}' côté Laravel Echo au lieu de 'App.Models.User.{id}'.
+     */
+    public function receivesBroadcastNotificationsOn(): string
+    {
+        return 'user.' . $this->id;
+    }
 }
