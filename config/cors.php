@@ -23,9 +23,13 @@ return [
         env('FRONTEND_URL', 'http://localhost:3000'),
         'http://localhost:3000',
         'http://127.0.0.1:3000',
+        'https://gest-garage-front.vercel.app',
+        'https://gest-garage-front.vercel.app/',
     ],
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        '#^https://gest-garage-front.*\.vercel\.app/?$#',
+    ],
 
     'allowed_headers' => ['*'],
 

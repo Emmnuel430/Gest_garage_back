@@ -57,6 +57,10 @@ APP_ENV=local
 APP_KEY=...
 APP_DEBUG=true
 APP_URL=http://localhost:8000
+FRONTEND_URL="https://gest-garage-front.vercel.app"
+
+# Configuration CORS
+# Le domaine Vercel https://gest-garage-front.vercel.app (et ses previews) est autorise dans config/cors.php
 
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
