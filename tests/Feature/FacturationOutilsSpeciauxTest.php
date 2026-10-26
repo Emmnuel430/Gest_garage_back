@@ -353,4 +353,93 @@ class FacturationOutilsSpeciauxTest extends TestCase
         // Véhicule B : 3h MO (3000) + 3h Outil (6000) = 9000 FCFA
         $this->assertEquals(9000, (int) $factureB->fresh()->montant);
     }
+
+    public function test_update_pret_can_affect_tool_to_second_vehicle_without_decrementing_stock(): void
+    {
+        $this->actingAs($this->admin);
+
+        $outil = Outil::create([
+            'libelle' => 'Scanner Diagnostic Partagé',
+            'reference' => 'SCN-SHARED-01',
+            'quantite' => 3,
+            'statut' => 'disponible',
+            'est_special' => true,
+            'prix_par_heure' => 1500,
+        ]);
+
+        $vehicule1 = Vehicule::create([
+            'immatriculation' => 'VEH-SHARE-1',
+            'marque' => 'Toyota',
+            'modele' => 'Corolla',
+            'mecanicien_id' => $this->mecanicien->id,
+        ]);
+        $reception1 = Reception::create([
+            'vehicule_id' => $vehicule1->id,
+            'created_by_id' => $this->admin->id,
+            'date_arrivee' => now(),
+            'motif_visite' => 'Entretien',
+            'statut' => 'validee',
+        ]);
+        $reparation1 = Reparation::create([
+            'reception_id' => $reception1->id,
+            'user_id' => $this->admin->id,
+            'description' => 'Réparation 1',
+            'statut' => 'en_cours',
+        ]);
+
+        // Prêt initial sur Véhicule 1 : Stock passe de 3 à 2
+        $loanRes = $this->postJson('/api/prete_outil', [
+            'mecanicien_id' => $this->mecanicien->id,
+            'reparation_id' => $reparation1->id,
+            'outil_id' => $outil->id,
+            'quantite' => 1,
+        ]);
+        $loanRes->assertStatus(201);
+        $this->assertEquals(2, $outil->fresh()->quantite);
+        $pret1Id = $loanRes->json('pret.id');
+
+        // Arrivée d'un 2ème véhicule pour ce même mécanicien
+        $vehicule2 = Vehicule::create([
+            'immatriculation' => 'VEH-SHARE-2',
+            'marque' => 'Honda',
+            'modele' => 'Civic',
+            'mecanicien_id' => $this->mecanicien->id,
+        ]);
+        $reception2 = Reception::create([
+            'vehicule_id' => $vehicule2->id,
+            'created_by_id' => $this->admin->id,
+            'date_arrivee' => now(),
+            'motif_visite' => 'Diagnostic',
+            'statut' => 'validee',
+        ]);
+        $reparation2 = Reparation::create([
+            'reception_id' => $reception2->id,
+            'user_id' => $this->admin->id,
+            'description' => 'Réparation 2',
+            'statut' => 'en_cours',
+        ]);
+
+        // Affecter / Partager l'outil déjà prêté sur le véhicule 2 via update_pret
+        $updateRes = $this->putJson("/api/update_pret/{$pret1Id}", [
+            'affecter_autre_reparation_id' => $reparation2->id,
+        ]);
+        $updateRes->assertStatus(200);
+
+        // Le stock physique reste à 2 (aucun décrément supplémentaire)
+        $this->assertEquals(2, $outil->fresh()->quantite);
+
+        // Un prêt enfant a été créé sur Véhicule 2
+        $pret2 = PretOutil::where('reparation_id', $reparation2->id)
+            ->where('outil_id', $outil->id)
+            ->first();
+        $this->assertNotNull($pret2);
+        $this->assertTrue((bool) $pret2->est_partage);
+        $this->assertEquals($pret1Id, $pret2->parent_pret_id);
+    }
+
+    public function test_admin_is_authorized_to_terminer_reparation_gate(): void
+    {
+        $this->assertTrue($this->admin->can('terminer_reparation'));
+        $this->assertTrue($this->admin->can('terminer-reparation'));
+    }
 }

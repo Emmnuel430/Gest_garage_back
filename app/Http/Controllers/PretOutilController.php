@@ -302,6 +302,10 @@ class PretOutilController extends Controller
      * Update a tool loan (edit quantity, recalculate available stock).
      * Only admin and caisse_outils roles are authorized.
      */
+    /**
+     * Update a tool loan (edit quantity, reassign vehicle, or share with another vehicle).
+     * Only admin and caisse_outils roles are authorized.
+     */
     public function updatePret(Request $request, $id)
     {
         $user = $request->user();
@@ -310,60 +314,160 @@ class PretOutilController extends Controller
         }
 
         $validated = $request->validate([
-            'quantite_pretee' => 'required|integer|min:1',
+            'quantite_pretee' => 'nullable|integer|min:1',
+            'affecter_autre_reparation_id' => 'nullable|exists:reparations,id',
+            'reaffecter_reparation_id' => 'nullable|exists:reparations,id',
         ]);
 
-        $pret = PretOutil::with('outil')->findOrFail($id);
+        $pret = PretOutil::with(['outil', 'reparation.reception.vehicule', 'mecanicien'])->findOrFail($id);
 
         if ($pret->statut === 'restitue') {
             return response()->json(['error' => 'Impossible de modifier un prêt déjà restitué.'], 400);
         }
 
-        $ancienneQuantite = $pret->quantite_pretee ?? $pret->quantite;
-        $nouvelleQuantite = $validated['quantite_pretee'];
-        $diff = $nouvelleQuantite - $ancienneQuantite;
-
         DB::beginTransaction();
         try {
-            // Adjust available stock: if increasing loan quantity, decrement stock; if decreasing, increment stock
-            if ($diff !== 0 && !$pret->est_partage) {
-                if ($diff > 0) {
-                    // Increasing loan: check stock availability
-                    if ($pret->outil->quantite < $diff) {
-                        return response()->json([
-                            'error' => "Stock insuffisant pour augmenter la quantité prêtée. Disponible : {$pret->outil->quantite}"
-                        ], 400);
-                    }
-                    $pret->outil->decrement('quantite', $diff);
-                } else {
-                    // Decreasing loan: return stock
-                    $pret->outil->increment('quantite', abs($diff));
+            $createdSharedPret = null;
+
+            // 1. Affecter également cet outil sur un autre véhicule du même mécanicien (partage sans décrémenter le stock)
+            if (!empty($validated['affecter_autre_reparation_id'])) {
+                $autreReparation = Reparation::with('reception.vehicule')->findOrFail($validated['affecter_autre_reparation_id']);
+
+                if ($autreReparation->statut === 'termine') {
+                    return response()->json(['error' => 'La réparation cible est déjà terminée.'], 422);
                 }
+
+                $autreVehicule = $autreReparation->reception?->vehicule;
+                if (!$autreVehicule) {
+                    return response()->json(['error' => 'Aucun véhicule lié à cette réparation.'], 422);
+                }
+
+                if ((int) $autreVehicule->mecanicien_id !== (int) $pret->mecanicien_id) {
+                    return response()->json([
+                        'error' => "Le véhicule sélectionné ({$autreVehicule->immatriculation}) n'est pas assigné à ce mécanicien."
+                    ], 422);
+                }
+
+                $alreadyLoaned = PretOutil::where('reparation_id', $autreReparation->id)
+                    ->where('outil_id', $pret->outil_id)
+                    ->where('statut', 'prete')
+                    ->exists();
+
+                if ($alreadyLoaned) {
+                    return response()->json([
+                        'error' => "Cet outil est déjà affecté et actif sur le véhicule {$autreVehicule->immatriculation}."
+                    ], 422);
+                }
+
+                $createdSharedPret = PretOutil::create([
+                    'outil_id' => $pret->outil_id,
+                    'reparation_id' => $autreReparation->id,
+                    'mecanicien_id' => $pret->mecanicien_id,
+                    'quantite' => $validated['quantite_pretee'] ?? $pret->quantite,
+                    'quantite_pretee' => $validated['quantite_pretee'] ?? $pret->quantite,
+                    'statut' => 'prete',
+                    'est_partage' => true,
+                    'parent_pret_id' => $pret->parent_pret_id ?? $pret->id,
+                ]);
+
+                $pret->update(['est_partage' => true]);
+
+                $this->logAction(
+                    $user,
+                    'add',
+                    'pret_outils',
+                    "Outil '{$pret->outil->libelle}' également affecté/partagé au véhicule {$autreVehicule->immatriculation} (Réparation ID: {$autreReparation->id}) pour le mécanicien {$pret->mecanicien->prenom} {$pret->mecanicien->nom}"
+                );
             }
 
-            $pret->update([
-                'quantite_pretee' => $nouvelleQuantite,
-                'quantite' => $nouvelleQuantite,
-            ]);
+            // 2. Réaffecter complètement le prêt à un autre véhicule si demandé
+            if (!empty($validated['reaffecter_reparation_id'])) {
+                $newReparation = Reparation::with('reception.vehicule')->findOrFail($validated['reaffecter_reparation_id']);
+                $newVehicule = $newReparation->reception?->vehicule;
 
-            $this->logAction(
-                $user,
-                'update',
-                'pret_outils',
-                "Prêt ID {$pret->id} modifié : quantité {$ancienneQuantite} → {$nouvelleQuantite} pour l'outil '{$pret->outil->libelle}'"
-            );
+                if ((int) $newVehicule?->mecanicien_id !== (int) $pret->mecanicien_id) {
+                    return response()->json([
+                        'error' => "Le véhicule de destination n'est pas assigné à ce mécanicien."
+                    ], 422);
+                }
+
+                $pret->update(['reparation_id' => $newReparation->id]);
+
+                $this->logAction(
+                    $user,
+                    'update',
+                    'pret_outils',
+                    "Prêt ID {$pret->id} réaffecté au véhicule {$newVehicule->immatriculation} (Réparation ID: {$newReparation->id})"
+                );
+            }
+
+            // 3. Modification de la quantité prêtée
+            if (!empty($validated['quantite_pretee'])) {
+                $ancienneQuantite = $pret->quantite_pretee ?? $pret->quantite;
+                $nouvelleQuantite = $validated['quantite_pretee'];
+                $diff = $nouvelleQuantite - $ancienneQuantite;
+
+                if ($diff !== 0 && !$pret->est_partage) {
+                    if ($diff > 0) {
+                        if ($pret->outil->quantite < $diff) {
+                            return response()->json([
+                                'error' => "Stock insuffisant pour augmenter la quantité prêtée. Disponible : {$pret->outil->quantite}"
+                            ], 400);
+                        }
+                        $pret->outil->decrement('quantite', $diff);
+                    } else {
+                        $pret->outil->increment('quantite', abs($diff));
+                    }
+                }
+
+                $pret->update([
+                    'quantite_pretee' => $nouvelleQuantite,
+                    'quantite' => $nouvelleQuantite,
+                ]);
+
+                $this->logAction(
+                    $user,
+                    'update',
+                    'pret_outils',
+                    "Prêt ID {$pret->id} modifié : quantité {$ancienneQuantite} → {$nouvelleQuantite} pour l'outil '{$pret->outil->libelle}'"
+                );
+            }
 
             DB::commit();
 
             return response()->json([
-                'message' => 'Prêt mis à jour avec succès.',
-                'pret' => $pret->load('outil'),
+                'message' => $createdSharedPret
+                    ? "Prêt mis à jour et outil également affecté au véhicule sélectionné."
+                    : "Prêt mis à jour avec succès.",
+                'pret' => $pret->fresh(['outil', 'reparation.reception.vehicule', 'mecanicien']),
+                'nouveau_pret' => $createdSharedPret ? $createdSharedPret->load(['outil', 'reparation.reception.vehicule', 'mecanicien']) : null,
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => 'Erreur lors de la modification du prêt : ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Dedicated action to share/affect an existing tool loan to another vehicle of the same mechanic.
+     */
+    public function partagerPret(Request $request, $id)
+    {
+        $user = $request->user();
+        if (!$user || $user->cannot('gerer-outils')) {
+            return response()->json(['error' => 'Non autorisé. Seul le Gérant ou la Caisse Outils peut partager un prêt.'], 403);
+        }
+
+        $validated = $request->validate([
+            'reparation_id' => 'required|exists:reparations,id',
+            'quantite' => 'nullable|integer|min:1',
+        ]);
+
+        return $this->updatePret(new Request([
+            'affecter_autre_reparation_id' => $validated['reparation_id'],
+            'quantite_pretee' => $validated['quantite'] ?? null,
+        ]), $id);
     }
 
     private function logAction($user, $action, $table, $details)

@@ -205,6 +205,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/prete_outil', [PretOutilController::class, 'preteOutil']);
     Route::post('/restitue_outil/{id}', [PretOutilController::class, 'restitueOutil']);
     Route::match(['put', 'post'], '/update_pret/{id}', [PretOutilController::class, 'updatePret']);
+    Route::post('/partager_pret/{id}', [PretOutilController::class, 'partagerPret']);
 
     // -----------------------------------------------
     // -----------------   Notifications   -----------
@@ -222,5 +223,5 @@ Route::middleware('auth:sanctum')->group(function () {
 // Définit une route GET pour l'endpoint '/test'.
 // Lorsque cette route est appelée, elle retourne un message JSON indiquant que l'API est en ligne.
 // Cette route est utilisée pour vérifier si l'API fonctionne correctement.
-Route::get('/test', fn() => response()->json(['message' => 'API en ligne 🎉']));
+Route::get('/test', fn() => response()->json(['message' => 'API en ligne']));
 

@@ -34,6 +34,8 @@ php artisan storage:link
   - Facturation a l'heure selon la duree nette du chrono du vehicule (`ceil(duree_minutes / 60)`).
   - Facturation strictement attribuee par vehicule : si un mecanicien utilise le meme outil pour plusieurs vehicules distincts, chaque reparation enregistre son pret et calcule sa part independamment selon son chrono propre.
 - Prets et retours d'outils affectes aux reparations (`PretOutilController`).
+- **Partage et affectation multi-vehicules :** Un outil deja prete a un mecanicien peut etre affecte/partage vers un autre vehicule actif de ce mecanicien (`/update_pret/{id}` ou `/partager_pret/{id}`). Le stock magasin n'est pas redecremente et le second vehicule facture l'outil selon son chrono propre.
+- **Autorisations et Gates :** Prise en charge des alias snake_case et kebab-case (`gerer-outils`, `gerer_outils`, `terminer-reparation`, `terminer_reparation`) dans `AppServiceProvider.php` pour les roles `admin`, `reception` et `caisse_outils`.
 
 ### 3. Facturation et Sortie
 - **Suppression du prix fixe d'entree :** Le montant fixe d'entree (prise en charge) a ete integralement retire du systeme de calcul et des parametres.
